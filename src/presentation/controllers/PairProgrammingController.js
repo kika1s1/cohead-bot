@@ -6,9 +6,9 @@ export class PairProgrammingController {
     this.pairProgramming = new PairProgramming(studentRepository, sessionRepository, leetCodeAPI);
   }
 
-  async execute(chatId, group, questionDetails) {
+  async execute(chatId, group, questionDetails, threadId) {
     const { pairs, questions } = await this.pairProgramming.execute(group, questionDetails);
-    
+
     let message = `<b>Pair Programming Session</b>\n`;
     message += `<b>Group:</b> ${group}\n\n`;
     message += `<b>Student Pairings:</b>\n`;
@@ -24,6 +24,9 @@ export class PairProgrammingController {
       message += `- <a href="${question.link}">${question.title}</a> - Difficulty: ${question.difficulty}\n`;
     });
 
-    bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    bot.sendMessage(chatId, message, {
+      parse_mode: 'HTML',
+      message_thread_id: threadId, // ensure the bot replies in the correct topic
+    });
   }
 }

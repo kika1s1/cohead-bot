@@ -52,68 +52,61 @@ const buildGroupKeyboard = (prefix) => [
 const pendingPairProgramming = {};
 const pendingInstructionMessages = {};
 
-// Handle /pair_programming command: always prompt for group selection
+// Handle /pair_programming command
 bot.onText(/\/pair_programming(?: .+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  const threadId = msg.message_thread_id; // capture the topic ID
 
-  // If sender is not an admin, delete the command and exit.
   if (!(await isUserAdmin(chatId, userId))) {
     bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
   }
-
-  // Delete the admin's command message
   bot.deleteMessage(chatId, msg.message_id).catch(() => {});
 
-  // Always prompt group selection (ignore any parameters)
   const keyboard = buildGroupKeyboard("group");
-  await bot.sendMessage(
-    chatId,
-    "Please select a group for Pair Programming:",
-    { reply_markup: { inline_keyboard: keyboard }, parse_mode: "HTML" }
-  );
+  await bot.sendMessage(chatId, "Please select a group for Pair Programming:", {
+    reply_markup: { inline_keyboard: keyboard },
+    parse_mode: "HTML",
+    message_thread_id: threadId,
+  });
 });
 
-// Handle /moon_walk command (optional parameters)
+// Handle /moon_walk command
 bot.onText(/\/moon_walk(?: (.+))?/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  const threadId = msg.message_thread_id; // capture the topic ID
 
-  // If sender is not an admin, delete their command message and exit.
   if (!(await isUserAdmin(chatId, userId))) {
     bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
   }
-
-  // Delete the admin's command message
   bot.deleteMessage(chatId, msg.message_id).catch(() => {});
 
-  // If no parameters provided, prompt group selection
   if (!match[1]) {
     const keyboard = buildGroupKeyboard("moon");
-    await bot.sendMessage(
-      chatId,
-      "Please select a group for Moon Walk:",
-      {
-        reply_markup: { inline_keyboard: keyboard },
-        parse_mode: "HTML",
-      }
-    );
+    await bot.sendMessage(chatId, "Please select a group for Moon Walk:", {
+      reply_markup: { inline_keyboard: keyboard },
+      parse_mode: "HTML",
+      message_thread_id: threadId,
+    });
     return;
   }
 
-  // If parameter provided, expect a simple group (e.g., "G61")
   const group = match[1].trim();
   if (!group) {
-    await bot.sendMessage(chatId, 'Please provide the group. (Format: /moon_walk G61)', { parse_mode: 'HTML' });
+    await bot.sendMessage(chatId, 'Please provide the group. (Format: /moon_walk G61)', {
+      parse_mode: 'HTML',
+      message_thread_id: threadId,
+    });
     return;
   }
 
   try {
-    await moonWalkController.execute(chatId, group);
+    await moonWalkController.execute(chatId, group, threadId);
   } catch (error) {
-    await bot.sendMessage(chatId, `Error: ${error.message}`);
+    await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
   }
 });
 
@@ -121,8 +114,8 @@ bot.onText(/\/moon_walk(?: (.+))?/, async (msg, match) => {
 bot.on("callback_query", async (callbackQuery) => {
   const { message, data, id, from } = callbackQuery;
   const chatId = message.chat.id;
+  const threadId = message.message_thread_id; // capture the topic ID
 
-  // If sender is not an admin, delete the callback message and exit.
   if (!(await isUserAdmin(chatId, from.id))) {
     await bot.deleteMessage(chatId, message.message_id).catch(() => {});
     return;
@@ -131,25 +124,25 @@ bot.on("callback_query", async (callbackQuery) => {
   await bot.answerCallbackQuery(id);
 
   if (data.startsWith("group_")) {
-    // For pair programming, store the selected group.
     const group = data.split("_")[1];
     await bot.deleteMessage(chatId, message.message_id).catch(() => {});
     pendingPairProgramming[chatId] = group;
-    // Send the instruction message and store its message id.
     const instructionMsg = await bot.sendMessage(
       chatId,
       `You selected group <b>${group}</b>.\nNow please provide the LeetCode question details in a comma-separated format, where each question is formatted as:\n\n<b>two sum, Add Two Numbers, Zigzag Conversion</b>`,
-      { parse_mode: "HTML" }
+      {
+        parse_mode: "HTML",
+        message_thread_id: threadId,
+      }
     );
     pendingInstructionMessages[chatId] = instructionMsg.message_id;
   } else if (data.startsWith("moon_")) {
-    // For moon walk, execute immediately.
     const group = data.split("_")[1];
     await bot.deleteMessage(chatId, message.message_id).catch(() => {});
     try {
-      await moonWalkController.execute(chatId, group);
+      await moonWalkController.execute(chatId, group, threadId);
     } catch (error) {
-      await bot.sendMessage(chatId, `Error: ${error.message}`);
+      await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
     }
   }
 });
@@ -157,14 +150,14 @@ bot.on("callback_query", async (callbackQuery) => {
 // Listen for plain text messages to capture pending LeetCode question details for Pair Programming
 bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
-  // Skip commands and non-text messages.
+  const threadId = msg.message_thread_id; // capture the topic ID
+
   if (!msg.text || msg.text.startsWith("/")) return;
 
   if (pendingPairProgramming[chatId]) {
     const group = pendingPairProgramming[chatId];
     delete pendingPairProgramming[chatId];
 
-    // Split input by commas; each entry is expected to be a question title.
     const entries = msg.text.split(",");
     const questionDetails = entries
       .map(entry => {
@@ -174,18 +167,14 @@ bot.on("message", async (msg) => {
       .filter(q => q.title);
 
     try {
-      // Execute pair programming; expect that the controller sends the final pairing message.
-      await pairProgrammingController.execute(chatId, group, questionDetails);
-      // Delete the admin's message containing the question details.
+      await pairProgrammingController.execute(chatId, group, questionDetails, threadId);
       await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-      // Delete the instructional message that was sent after group selection.
       if (pendingInstructionMessages[chatId]) {
         await bot.deleteMessage(chatId, pendingInstructionMessages[chatId]).catch(() => {});
         delete pendingInstructionMessages[chatId];
       }
     } catch (error) {
-      await bot.sendMessage(chatId, `Error: ${error.message}`);
-      // On error, delete both the input and instruction messages.
+      await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
       await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
       if (pendingInstructionMessages[chatId]) {
         await bot.deleteMessage(chatId, pendingInstructionMessages[chatId]).catch(() => {});
