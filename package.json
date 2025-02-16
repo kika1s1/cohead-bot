@@ -1,0 +1,35 @@
+{
+  "name": "coheadbot",
+  "version": "1.0.0",
+  "description": "A Telegram bot for pairing students for pair programming and moon walk sessions.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "node src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kika1s1/cohead-bot.git"
+  },
+  "keywords": [
+    "telegram",
+    "cohead",
+    "bot",
+    "pair-programming",
+    "moon-walk",
+    "education"
+  ],
+  "author": "Tamirat Kebede",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kika1s1/cohead-bot/issues"
+  },
+  "homepage": "https://github.com/kika1s1/cohead-bot#readme",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "mongoose": "^8.10.1",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}
