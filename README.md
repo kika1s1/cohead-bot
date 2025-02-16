@@ -6,7 +6,7 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
 
 - **Pair Programming**:
   - Pair students together and assign them LeetCode problems to solve.
-  - Admin selects the group and provides LeetCode question numbers.
+  - Admin selects the group and provides LeetCode question titles.
   - Students are paired randomly for each session, with no repetition.
   
 - **Moon Walk**:
@@ -39,7 +39,7 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
     npm install
     ```
 
-4. Create a `.env` file in the root directory of your project and add your Telegram bot token and MongoDB connection URI:
+4. Create a [.env](http://_vscodecontentref_/1) file in the root directory of your project and add your Telegram bot token and MongoDB connection URI:
 
     ```env
     TELEGRAM_BOT_TOKEN=your_telegram_bot_token
@@ -49,7 +49,7 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
 5. Start the bot:
 
     ```bash
-    node index.js
+    npm run dev
     ```
 
 ## Usage
@@ -58,7 +58,7 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
 
 1. The admin types `/pair_programming` in the Telegram chat.
 2. The bot prompts the admin to select a group (e.g., G61).
-3. The admin provides a list of LeetCode question numbers (e.g., `1, 2, 3`).
+3. The admin provides a list of LeetCode question titles (e.g., `Two Sum, Add Two Numbers, Zigzag Conversion`).
 4. The bot fetches the LeetCode questions and pairs the students randomly.
 5. The bot posts the pairing information and the LeetCode questions to the Telegram chat.
 
@@ -83,9 +83,9 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
 
 **LeetCode Questions:**
 
-- Two Sum - Difficulty: Easy
-- Add Two Numbers - Difficulty: Medium
-- Longest Substring Without Repeating Characters - Difficulty: Medium
+- [Two Sum](https://leetcode.com/problems/two-sum/) - Difficulty: unknown
+- [Add Two Numbers](https://leetcode.com/problems/add-two-numbers/) - Difficulty: unknown
+- [Zigzag Conversion](https://leetcode.com/problems/zigzag-conversion/) - Difficulty: unknown
 
 ### Moon Walk Session
 
