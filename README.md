@@ -13,6 +13,10 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
   - Pair students together and encourage them to converse in English to improve communication skills.
   - Admin selects the group, and the bot generates random student pairings.
 
+- **Excused Command**:
+  - Allows admins to quickly review heads-up submissions from specific groups (such as G61 or G63) for the current day.
+  - Retrieves today's submissions, filters by group, extracts student names, builds a summary report, and sends the final report to the Telegram chat.
+
 ## Prerequisites
 
 - Node.js installed (version 14 or higher recommended).
@@ -68,6 +72,36 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
 2. The bot prompts the admin to select a group (e.g., G61).
 3. The bot pairs students randomly for a conversation session.
 4. The bot shares the pairings in the Telegram chat along with instructions for the Moon Walk session.
+
+### Excused Command
+
+The `/excused` command allows admins to quickly review heads-up submissions from specific groups (such as G61 or G63) for the current day. When an admin sends the `/excused` command within a Telegram chat under a supported group topic, the bot:
+
+1. **Retrieves Today's Submissions:**  
+   It collects all the heads-up submissions recorded for the current day.
+
+2. **Filters by Group:**  
+   The bot filters the submissions to include only those made by students from the specified group (for example, G61 or G63).
+
+3. **Extracts Student Names:**  
+   It then extracts the names of the students who submitted a valid heads-up message.
+
+4. **Builds a Summary Report:**  
+   The bot compiles a summary that lists the names of all students from the group who wrote their heads-up message, and it also includes a total count of these submissions.
+
+5. **Sends the Final Report:**  
+   Finally, the bot posts the summary and the total count back to the Telegram chat, giving admins a quick snapshot of attendance and notifications for that day.
+
+*Example Output:*
+
+```
+**Excused Submissions for G61:**
+- Abdulaziz
+- Isa
+- Abdiwak
+
+**Total Submissions:** 3
+```
 
 ## Example Telegram Output
 

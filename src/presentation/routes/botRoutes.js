@@ -191,12 +191,12 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const threadId = msg.message_thread_id;
-
+  await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
   if (!(await isUserAdmin(chatId, userId))) {
    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
    return;
   }
-  await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+ 
 
   const group = await getTopicName(chatId, threadId);
   if (!group || !["G61", "G63", "G68", "G69"].includes(group)) {
