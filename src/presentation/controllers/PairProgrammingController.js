@@ -3,10 +3,12 @@ import { bot } from '../../infrastructure/telegram/bot.js';
 
 export class PairProgrammingController {
   constructor(studentRepository, sessionRepository, leetCodeAPI) {
+    this.studentRepository = studentRepository;
     this.pairProgramming = new PairProgramming(studentRepository, sessionRepository, leetCodeAPI);
   }
 
   async execute(chatId, group, questionDetails, threadId) {
+    const students = await this.studentRepository.findByGroup(group);
     const { pairs, questions } = await this.pairProgramming.execute(group, questionDetails);
 
     let message = `<b>Pair Programming Session</b>\n`;
@@ -21,7 +23,7 @@ export class PairProgrammingController {
     });
     message += `\n<b>LeetCode Questions:</b>\n`;
     questions.forEach(question => {
-      message += `- <a href="${question.link}">${question.title}</a> - Difficulty: ${question.difficulty}\n`;
+      message += `- <a href="${question.link}">${question.title}</a>\n`;
     });
 
     bot.sendMessage(chatId, message, {

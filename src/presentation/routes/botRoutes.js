@@ -1,6 +1,7 @@
 import { bot } from "../../infrastructure/telegram/bot.js";
 import { PairProgrammingController } from "../controllers/PairProgrammingController.js";
 import { MoonWalkController } from "../controllers/MoonWalkController.js";
+import { HeadsUpController } from '../controllers/HeadsUpController.js';
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import { LeetCodeAPI } from "../../infrastructure/leetcode/LeetCodeAPI.js";
@@ -16,93 +17,165 @@ async function isUserAdmin(chatId, userId) {
   }
 }
 
-// Initialize dependencies
+// Instantiate dependencies
 const studentRepository = new StudentRepository();
 const sessionRepository = new SessionRepository();
 const leetCodeAPI = new LeetCodeAPI();
 
-// Inject dependencies into controllers
-const pairProgrammingController = new PairProgrammingController(
-  studentRepository,
-  sessionRepository,
-  leetCodeAPI
-);
+// Initialize controllers with all required dependencies
+const headsUpController = new HeadsUpController();
+const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository, leetCodeAPI);
 const moonWalkController = new MoonWalkController(studentRepository, sessionRepository);
 
-// Helper: Build inline keyboard for groups G61 to G69 (3×3 grid)
-const buildGroupKeyboard = (prefix) => [
-  [
-    { text: "G61", callback_data: `${prefix}_G61` },
-    { text: "G62", callback_data: `${prefix}_G62` },
-    { text: "G63", callback_data: `${prefix}_G63` },
-  ],
-  [
-    { text: "G64", callback_data: `${prefix}_G64` },
-    { text: "G65", callback_data: `${prefix}_G65` },
-    { text: "G66", callback_data: `${prefix}_G66` },
-  ],
-  [
-    { text: "G67", callback_data: `${prefix}_G67` },
-    { text: "G68", callback_data: `${prefix}_G68` },
-    { text: "G69", callback_data: `${prefix}_G69` },
-  ],
-];
+// Helper to get topic (group) name by thread ID using fixed mappings
+async function getTopicName(chatId, threadId) {
+  try {
+    const mapping = {
+      255: "G69",
+      359: "Heads Up",
+      281: "G61",
+      518:"G68"
+    };
+    return mapping[threadId] || `G6(${threadId})`;
+  } catch (err) {
+    console.error("Failed to get topic name:", err);
+    return null;
+  }
+}
 
-// In-memory state to track pending pair programming group selections and instruction messages
+// In-memory state for pending pair programming messages.
+// Instead of storing just a group string, we store an object:
+// { group: string, promptMsgId: number }
 const pendingPairProgramming = {};
-const pendingInstructionMessages = {};
 
-// Handle /pair_programming command
+/* === Message Handler for Heads Up Analysis ===
+   Only messages posted in the "Heads Up" thread (359) are analyzed.
+*/
+bot.on("message", async (msg) => {
+  if (!msg.text) return;
+  
+  const chatId = msg.chat.id;
+  const messageText = msg.text;
+  const threadId = msg.message_thread_id;
+  console.log(threadId)
+  const topicName = await getTopicName(chatId, threadId);
+  if (!topicName) return;
+  
+  // Heads Up messages are handled separately.
+  if (topicName === "Heads Up") {
+    try {
+      const response = await headsUpController.handleHeadsUp(chatId, messageText);
+      if (response) {
+        await bot.sendMessage(chatId, response, {
+          reply_to_message_id: msg.message_id,
+          message_thread_id: threadId,
+        });
+      }
+    } catch (error) {
+      console.error("Heads Up handling error:", error.message);
+    }
+  }
+  
+  // Process pending pair programming question details.
+  // We expect the admin’s reply (comma-separated links) to follow the command prompt.
+  if (pendingPairProgramming[chatId]) {
+    const pending = pendingPairProgramming[chatId];
+    delete pendingPairProgramming[chatId];
+    
+    // Delete the admin's details message (current msg) and the earlier prompt message.
+    await Promise.all([
+      bot.deleteMessage(chatId, msg.message_id).catch(() => {}),
+      bot.deleteMessage(chatId, pending.promptMsgId).catch(() => {})
+    ]);
+    
+    // Split the incoming message by commas into an array of links.
+    const links = messageText.split(",").map(link => link.trim()).filter(link => link);
+    
+    try {
+      // Fetch questions, generating titles from the links.
+      const questions = await leetCodeAPI.fetchQuestions(links);
+      // Process pair programming pairing with the questions.
+      await pairProgrammingController.execute(chatId, pending.group, questions, threadId);
+    } catch (error) {
+      await bot.sendMessage(chatId, `Error: ${error.message}`, {
+        message_thread_id: threadId,
+      });
+    }
+  }
+});
+
+/* === /pair_programming Command Handler ===
+   Restricted to admins. The bot uses the thread ID mapping to determine the group.
+   If the command is used in the Heads Up topic, an error message is sent then deleted.
+*/
 bot.onText(/\/pair_programming(?: .+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
-  const threadId = msg.message_thread_id; // capture the topic ID
-
+  const threadId = msg.message_thread_id;
+  
   if (!(await isUserAdmin(chatId, userId))) {
-    bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
   }
-  bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-
-  const keyboard = buildGroupKeyboard("group");
-  await bot.sendMessage(chatId, "Please select a group for Pair Programming:", {
-    reply_markup: { inline_keyboard: keyboard },
-    parse_mode: "HTML",
-    message_thread_id: threadId,
-  });
-});
-
-// Handle /moon_walk command
-bot.onText(/\/moon_walk(?: (.+))?/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const threadId = msg.message_thread_id; // capture the topic ID
-
-  if (!(await isUserAdmin(chatId, userId))) {
-    bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+  
+  const group = await getTopicName(chatId, threadId);
+  console.log("Group:", group);
+  
+  if (!group || group === "Heads Up") {
+    // Send error message, delete both command and error shortly after.
+    const sentMessage = await bot.sendMessage(
+      chatId,
+      "This command cannot be used in the Heads Up topic.",
+      { message_thread_id: threadId }
+    );
+    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    
+    setTimeout(async () => {
+      await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
+    }, 500);
     return;
   }
-  bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-
-  if (!match[1]) {
-    const keyboard = buildGroupKeyboard("moon");
-    await bot.sendMessage(chatId, "Please select a group for Moon Walk:", {
-      reply_markup: { inline_keyboard: keyboard },
+  
+  // Delete the admin's command message.
+  await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+  
+  // Prompt admin for LeetCode question details (links separated by commas).
+  const promptMsg = await bot.sendMessage(
+    chatId,
+    `Group ${group}: Please provide the LeetCode question details as comma-separated links.\nExample:`,
+    {
       parse_mode: "HTML",
       message_thread_id: threadId,
-    });
+    }
+  );
+  
+  // Save the pending state including the group and the prompt message ID.
+  pendingPairProgramming[chatId] = { group, promptMsgId: promptMsg.message_id };
+});
+
+/* === /moon_walk Command Handler ===
+   Restricted to admins. The bot uses the thread ID mapping to determine the group.
+*/
+bot.onText(/\/moon_walk(?: .+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const threadId = msg.message_thread_id;
+  
+  if (!(await isUserAdmin(chatId, userId))) {
+    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
   }
-
-  const group = match[1].trim();
-  if (!group) {
-    await bot.sendMessage(chatId, 'Please provide the group. (Format: /moon_walk G61)', {
-      parse_mode: 'HTML',
+  // Delete the original command message immediately.
+  await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+  
+  const group = await getTopicName(chatId, threadId);
+  if (!group || group === "Heads Up") {
+    await bot.sendMessage(chatId, "This command cannot be used in the Heads Up topic.", {
       message_thread_id: threadId,
     });
     return;
   }
-
+  
   try {
     await moonWalkController.execute(chatId, group, threadId);
   } catch (error) {
@@ -110,76 +183,45 @@ bot.onText(/\/moon_walk(?: (.+))?/, async (msg, match) => {
   }
 });
 
-// Callback query handler for inline keyboard selections
-bot.on("callback_query", async (callbackQuery) => {
-  const { message, data, id, from } = callbackQuery;
-  const chatId = message.chat.id;
-  const threadId = message.message_thread_id; // capture the topic ID
 
-  if (!(await isUserAdmin(chatId, from.id))) {
-    await bot.deleteMessage(chatId, message.message_id).catch(() => {});
+/* === /excused Command Handler ===
+  Restricted to admins. The bot uses the thread ID mapping to determine the group.
+*/
+bot.onText(/\/excused(?: .+)?/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const threadId = msg.message_thread_id;
+
+  if (!(await isUserAdmin(chatId, userId))) {
+   await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+   return;
+  }
+  await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+
+  const group = await getTopicName(chatId, threadId);
+  if (!group || !["G61", "G63", "G68", "G69"].includes(group)) {
+    await bot.sendMessage(userId, "This command can only be used in G61 or G63 topics.");
+    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
   }
 
-  await bot.answerCallbackQuery(id);
+  try {
+   // Retrieve all Heads-Up submissions for the current day.
+   const submissions = await headsUpController.getTodaysSubmissions();
 
-  if (data.startsWith("group_")) {
-    const group = data.split("_")[1];
-    await bot.deleteMessage(chatId, message.message_id).catch(() => {});
-    pendingPairProgramming[chatId] = group;
-    const instructionMsg = await bot.sendMessage(
-      chatId,
-      `You selected group <b>${group}</b>.\nNow please provide the LeetCode question details in a comma-separated format, where each question is formatted as:\n\n<b>two sum, Add Two Numbers, Zigzag Conversion</b>`,
-      {
-        parse_mode: "HTML",
-        message_thread_id: threadId,
-      }
-    );
-    pendingInstructionMessages[chatId] = instructionMsg.message_id;
-  } else if (data.startsWith("moon_")) {
-    const group = data.split("_")[1];
-    await bot.deleteMessage(chatId, message.message_id).catch(() => {});
-    try {
-      await moonWalkController.execute(chatId, group, threadId);
-    } catch (error) {
-      await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
-    }
-  }
-});
+   // Filter the submissions to include only students from the specified group.
+   const filteredSubmissions = submissions.filter(submission => submission.group === group);
 
-// Listen for plain text messages to capture pending LeetCode question details for Pair Programming
-bot.on("message", async (msg) => {
-  const chatId = msg.chat.id;
-  const threadId = msg.message_thread_id; // capture the topic ID
+   // Extract the names of the students who submitted their Heads-Up responses.
+   const studentNames = filteredSubmissions.map(submission => submission.studentName);
 
-  if (!msg.text || msg.text.startsWith("/")) return;
+   // Compile a summary, listing the names of students from that group who wrote a Heads-Up.
+  const formattedDate = new Date().toLocaleDateString();
+  const summary = `Heads-Up submissions for ${group} on ${formattedDate}:\n` + studentNames.join("\n");
 
-  if (pendingPairProgramming[chatId]) {
-    const group = pendingPairProgramming[chatId];
-    delete pendingPairProgramming[chatId];
-
-    const entries = msg.text.split(",");
-    const questionDetails = entries
-      .map(entry => {
-        const title = entry.trim().replace(/[.,]$/, '');
-        return { title };
-      })
-      .filter(q => q.title);
-
-    try {
-      await pairProgrammingController.execute(chatId, group, questionDetails, threadId);
-      await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-      if (pendingInstructionMessages[chatId]) {
-        await bot.deleteMessage(chatId, pendingInstructionMessages[chatId]).catch(() => {});
-        delete pendingInstructionMessages[chatId];
-      }
-    } catch (error) {
-      await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
-      await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-      if (pendingInstructionMessages[chatId]) {
-        await bot.deleteMessage(chatId, pendingInstructionMessages[chatId]).catch(() => {});
-        delete pendingInstructionMessages[chatId];
-      }
-    }
+   // Send the summary and the final count of the total number of students from that group who submitted their Heads-Up for the day.
+  await bot.sendMessage(userId, `${summary}\n\nTotal: ${studentNames.length}`);
+  } catch (error) {
+   await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
   }
 });
