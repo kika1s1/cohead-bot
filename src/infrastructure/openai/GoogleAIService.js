@@ -10,19 +10,17 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
  * @returns {Promise<string>} - Feedback from Gemini.
  */
 export async function analyzeHeadsUp(message) {
-  const prompt = `
-    Analyze the following heads-up message and provide feedback if it is vague or incomplete.
-    The message should include:
-    1. The student's full name.
-    2. The group number (e.g., G61).
-    3. A clear reason for absence or delay.
-    4. Estimated arrival time (if late) if he/she can come.
+    const prompt = `
+    Analyze the following heads-up message and determine if it is valid.
+    A valid heads-up message must include:
+      1. The student's full name.
+      2. The group number (e.g., G61, G64, etc.). group start with G and followed by two numbers from G68 means a person is from Group 68
+      3. A reason for absence or delay.
+    If any of these elements are missing , provide specific feedback indicating what is missing from the above three only.
+    Otherwise, respond with "Valid" only.
 
     Message: "${message}"
-
-    If the message is incomplete or vague, provide specific feedback. Otherwise, respond with "Valid".
   `;
-
   try {
     const result = await model.generateContent(prompt);
     // Return the generated feedback (trimmed)
@@ -34,7 +32,7 @@ export async function analyzeHeadsUp(message) {
 }
 
 // Example usage (for testing purposes)
-// const headsUpMessage = "Hey team, this is John Doe from G61. I won't be able to attend today's session because I have a doctor's appointment.";
+// const headsUpMessage = "My name is Tamirat Kebede from G68 i won't come because i am sick"
 // analyzeHeadsUp(headsUpMessage)
 //   .then((feedback) => {
 //     if (feedback === "Valid") {

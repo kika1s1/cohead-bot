@@ -208,6 +208,7 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
   try {
    // Retrieve all Heads-Up submissions for the current day.
    const submissions = await headsUpController.getTodaysSubmissions();
+   console.log(submissions)
 
    // Filter the submissions to include only students from the specified group.
    const filteredSubmissions = submissions.filter(submission => submission.group === group);
@@ -217,7 +218,8 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
 
    // Compile a summary, listing the names of students from that group who wrote a Heads-Up.
   const formattedDate = new Date().toLocaleDateString();
-  const summary = `Heads-Up submissions for ${group} on ${formattedDate}:\n` + studentNames.join("\n");
+  const summary = `Heads-Up submissions for ${group} on ${formattedDate}:\n` + 
+    filteredSubmissions.map(submission => `🟡 ${submission.studentName}: ${submission.message || 'No reason provided'}`).join("\n");
 
    // Send the summary and the final count of the total number of students from that group who submitted their Heads-Up for the day.
   await bot.sendMessage(userId, `${summary}\n\nTotal: ${studentNames.length}`);
