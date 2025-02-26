@@ -1,4 +1,5 @@
-import { analyzeHeadsUp } from '../../infrastructure/openai/OpenAIService.js';
+// import { analyzeHeadsUp } from '../../infrastructure/openai/OpenAIService.js';
+import { analyzeHeadsUp } from '../../infrastructure/openai/GoogleAIService.js';
 import { RuleBasedHeadsUpAnalysis } from './RuleBasedHeadsUpAnalysis.js';
 import { HeadsUpSubmissionModel } from '../../infrastructure/database/mongoose/HeadsUpSubmissionModel.js';
 
