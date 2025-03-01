@@ -6,7 +6,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "seed": "node src/seeder/studentSeeder.js -s",
+    "delete": "node src/seeder/studentSeeder.js -d"
   },
   "repository": {
     "type": "git",
@@ -29,10 +31,11 @@
   "dependencies": {
     "@google/generative-ai": "^0.22.0",
     "axios": "^1.7.9",
+    "commander": "^13.1.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "mongoose": "^8.10.1",
-    "node-telegram-bot-api": "^0.63.0",
+    "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.85.1",
     "punycode": "^2.3.1"
   }
