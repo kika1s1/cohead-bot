@@ -206,7 +206,7 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
  
 
   const group = await getTopicName(chatId, threadId);
-  if (!group || !["G61", "G63", "G68", "G69"].includes(group)) {
+  if (!group || !["G61","G62", "G63",  "G64","G65","G66","G67", "G68", "G69"].includes(group)) {
     await bot.sendMessage(userId, "This command can only be used in G61 or G63 topics.");
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
