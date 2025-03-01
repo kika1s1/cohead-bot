@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { MONGODB_URI } from '../config/env.js'; // updated import path
 import { StudentModel } from '../infrastructure/database/mongoose/StudentModel.js';
+import { SessionModel } from '../infrastructure/database/mongoose/SessionModel.js';
+import { HeadsUpSubmissionModel } from '../infrastructure/database/mongoose/HeadsUpSubmissionModel.js';
 import { program } from 'commander';
 
 const students = [
@@ -309,8 +311,13 @@ async function deleteAllStudents() {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB for deleting all students.');
 
-    const result = await StudentModel.deleteMany({});
-    console.log(`Deleted ${result.deletedCount} students.`);
+    const student = await StudentModel.deleteMany({});
+    const session = await SessionModel.deleteMany({})
+    const headsup = await HeadsUpSubmissionModel.deleteMany({})
+
+    console.log(`Deleted ${student.deletedCount} students.`);
+    console.log(`Deleted ${session.deletedCount} sessions.`);
+    console.log(`Deleted ${headsup.deletedCount} headsups.`);
     process.exit(0);
   } catch (err) {
     console.error('Error deleting all students:', err);
@@ -335,6 +342,7 @@ if (options.seed) {
   seedStudents();
 } else if (options.delete) {
   deleteAllStudents();
+
 } else {
   console.log('No option specified. Use -s to seed or -d to delete.');
 }
