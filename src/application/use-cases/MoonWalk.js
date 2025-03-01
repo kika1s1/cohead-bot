@@ -7,8 +7,15 @@ export class MoonWalk {
     this.sessionRepository = sessionRepository;
   }
 
-  async execute(group) {
-    const students = await this.studentRepository.findByGroup(group);
+  /**
+   * Execute a Moon Walk session.
+   * Optionally, pair only the provided activeStudents.
+   * @param {string} group 
+   * @param {Array} [activeStudents] - Optional filtered list of students.
+   * @returns {Promise<Object>} - { pairs }
+   */
+  async execute(group, activeStudents = null) {
+    const students = activeStudents || await this.studentRepository.findByGroup(group);
     const pairs = this._pairStudents(students);
 
     const session = new Session({
@@ -23,6 +30,7 @@ export class MoonWalk {
   }
 
   _pairStudents(students) {
+    // Shuffle the array randomly.
     const shuffled = students.sort(() => 0.5 - Math.random());
     const pairs = [];
     for (let i = 0; i < shuffled.length; i += 2) {
