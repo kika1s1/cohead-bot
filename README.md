@@ -1,3 +1,7 @@
+# Cohead Bot: Pair Students for  Programming, Moon Walk,  Traid Contest and Quickly review heads-up submissions
+
+This Telegram bot is designed to help A2SV heads quickly pair students for **Pair Programming**, **Moon Walk**, and **Traid Contest** sessions. It also features an attendance summary tool that allows heads to easily record and verify student attendance.
+
 # Pair Programming and Moon Walk Telegram Bot
 
 This Telegram bot is designed to pair students for **Pair Programming** and **Moon Walk** sessions at A2SV. The bot allows admins to create and manage pairings for each session, ensuring that students are paired equally and without repetition.
@@ -43,11 +47,14 @@ This Telegram bot is designed to pair students for **Pair Programming** and **Mo
     npm install
     ```
 
-4. Create a [.env](http://_vscodecontentref_/1) file in the root directory of your project and add your Telegram bot token and MongoDB connection URI:
+4. Create a [.env](http://_vscodecontentref_/1) file in the root directory of your project and add your Telegram bot token, MongoDB connection URI, Gemini API key, OpenAI API key, and port:
 
     ```env
     TELEGRAM_BOT_TOKEN=your_telegram_bot_token
     MONGODB_URI=your_mongodb_connection_uri
+    GEMINI_API_KEY=your_gemini_api_key
+    OPENAI_API_KEY=your_openai_api_key
+    PORT=3000
     ```
 
 5. Start the bot:
@@ -103,11 +110,17 @@ The `/excused` command allows admins to quickly review heads-up submissions from
 **Total Submissions:** 3
 ```
 
+**Heads-Up submissions for G61 on 3/1/2025:**
+- John Doe: I'm running late due to traffic.
+- Jane Smith: I won't attend because of an appointment.
+
+**Total Submissions:** 2
+
 ## Example Telegram Output
 
 ### Pair Programming Session
 
-🚀 **Pair Programming Power Session: Let's Solve LeetCode Together!** 💡
+🚀 **Pair Programming Power Session: Let's Solve Questions Together!** 💡
 
 **Student Pairings:**
 
@@ -115,7 +128,7 @@ The `/excused` command allows admins to quickly review heads-up submissions from
 - Abdiwak & Amsalu
 - Abdulbaset & Alem
 
-**LeetCode Questions:**
+**Questions:**
 
 - [Two Sum](https://leetcode.com/problems/two-sum/) - Difficulty: unknown
 - [Add Two Numbers](https://leetcode.com/problems/add-two-numbers/) - Difficulty: unknown
