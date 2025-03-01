@@ -26,7 +26,7 @@ export class PairProgrammingController {
         message += `- ${pair[0].name} (unpaired)\n`;
       }
     });
-    message += `\n<b>LeetCode Questions:</b>\n`;
+    message += `\n<b>Questions:</b>\n`;
     questions.forEach(question => {
       message += `- <a href="${question.link}">${question.title}</a>\n`;
     });

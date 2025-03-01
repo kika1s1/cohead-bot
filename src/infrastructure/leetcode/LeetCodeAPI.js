@@ -42,7 +42,7 @@ export class LeetCodeAPI {
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
         } else {
-          title = "Unknown Title";
+          title = "Codeforce";
         }
       }
       

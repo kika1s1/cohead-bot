@@ -31,10 +31,17 @@ const moonWalkController = new MoonWalkController(studentRepository, sessionRepo
 async function getTopicName(chatId, threadId) {
   try {
     const mapping = {
+      281: "G61",
+      1010:"G62",
+      1015:"G63",
+      1021:"G64",
+      1048:"G65",
+      1057:"G66",
+      1080:"G67",
+      518:"G68",
       255: "G69",
       359: "Heads Up",
-      281: "G61",
-      518:"G68"
+      
     };
     return mapping[threadId] || `G6(${threadId})`;
   } catch (err) {
