@@ -1,6 +1,6 @@
 # Cohead Bot: Pair Students for  Programming, Moon Walk,  Traid Contest and Quickly review heads-up submissions
 
-This Telegram bot is designed to help A2SV heads quickly pair students for **Pair Programming**, **Moon Walk**, and **Traid Contest** sessions. It also features an attendance summary tool that allows heads to easily record and verify student attendance.
+This Telegram bot is designed to help A2SV heads quickly pair students for **Pair Programming**, **Moon Walk**, and **Traid Contest** sessions. It also features an attendance summary  that allows heads to easily record and verify student attendance.
 
 # Pair Programming and Moon Walk Telegram Bot
 
