@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const sessionSchema = new mongoose.Schema({
-  type: { type: String, enum: ['pair_programming', 'moon_walk'], required: true },
+  type: { type: String, enum: ['pair_programming', 'moon_walk', "traid_contest"], required: true },
   group: { type: String, required: true },
   pairs: {
     type: [[{ type: mongoose.Schema.Types.ObjectId, ref: 'Student' }]],

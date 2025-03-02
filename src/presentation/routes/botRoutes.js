@@ -2,6 +2,7 @@ import { bot } from "../../infrastructure/telegram/bot.js";
 import { PairProgrammingController } from "../controllers/PairProgrammingController.js";
 import { MoonWalkController } from "../controllers/MoonWalkController.js";
 import { HeadsUpController } from '../controllers/HeadsUpController.js';
+import { TraidContestController } from "../controllers/traidContestController.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import { LeetCodeAPI } from "../../infrastructure/leetcode/LeetCodeAPI.js";
@@ -26,6 +27,7 @@ const leetCodeAPI = new LeetCodeAPI();
 const headsUpController = new HeadsUpController();
 const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository, leetCodeAPI);
 const moonWalkController = new MoonWalkController(studentRepository, sessionRepository);
+const traidContestController = new TraidContestController();
 
 // Helper to get topic (group) name by thread ID using fixed mappings
 async function getTopicName(chatId, threadId) {
@@ -234,3 +236,12 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
    await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
   }
 });
+
+/* === /Grouping Command Handler ===
+   Restricted to admins. The bot uses the thread ID mapping to determine the group.
+*/
+bot.onText(/\/traid_contest(?: (.+))?/, async (msg, match) => {
+  await traidContestController.handleCommand(msg, match);
+});
+
+
