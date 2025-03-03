@@ -66,7 +66,7 @@ bot.on("message", async (msg) => {
   const chatId = msg.chat.id;
   const messageText = msg.text;
   const threadId = msg.message_thread_id;
-  console.log(threadId)
+  // console.log(threadId)
   const topicName = await getTopicName(chatId, threadId);
   if (!topicName) return;
   
@@ -217,7 +217,7 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
   try {
    // Retrieve all Heads-Up submissions for the current day.
    const submissions = await headsUpController.getTodaysSubmissions();
-   console.log(submissions)
+  //  console.log(submissions)
 
    // Filter the submissions to include only students from the specified group.
    const filteredSubmissions = submissions.filter(submission => submission.group === group);

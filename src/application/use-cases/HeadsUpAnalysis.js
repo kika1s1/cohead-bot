@@ -67,7 +67,7 @@ Message: "${message}"
         throw new Error("No JSON object found in response");
       }
       const jsonString = jsonMatch[0];
-      console.log(jsonString);
+      // console.log(jsonString);
       
       // Parse the JSON string.
       const result = JSON.parse(jsonString);
