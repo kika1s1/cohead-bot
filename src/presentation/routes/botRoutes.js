@@ -45,7 +45,7 @@ async function getTopicName(chatId, threadId) {
       359: "Heads Up",
       
     };
-    return mapping[threadId] || `G6(${threadId})`;
+    return mapping[threadId] || threadId;
   } catch (err) {
     console.error("Failed to get topic name:", err);
     return null;
@@ -128,7 +128,7 @@ bot.onText(/\/pair_programming(?: .+)?/, async (msg) => {
   }
   
   const group = await getTopicName(chatId, threadId);
-  console.log("Group:", group);
+  // console.log("Group:", group);
   
   if (!group || group === "Heads Up") {
     // Send error message, delete both command and error shortly after.
@@ -151,7 +151,7 @@ bot.onText(/\/pair_programming(?: .+)?/, async (msg) => {
   // Prompt admin for LeetCode question details (links separated by commas).
   const promptMsg = await bot.sendMessage(
     chatId,
-    `Group ${group}: Please provide the LeetCode question details as comma-separated links.\nExample:`,
+    `Group ${group}: Please provide comma-separated questions links.\nExample:https://leetcode.com/problems/letter-tile-possibilities/description,https://leetcode.com/problems/two-sum/description`,
     {
       parse_mode: "HTML",
       message_thread_id: threadId,
@@ -169,6 +169,7 @@ bot.onText(/\/moon_walk(?: .+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const threadId = msg.message_thread_id;
+  // console.log(chatId, userId, threadId)
   
   if (!(await isUserAdmin(chatId, userId))) {
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
@@ -176,15 +177,21 @@ bot.onText(/\/moon_walk(?: .+)?/, async (msg) => {
   }
   // Delete the original command message immediately.
   await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+  // console.log(chatId, threadId)
   
   const group = await getTopicName(chatId, threadId);
-  if (!group || group === "Heads Up") {
-    await bot.sendMessage(chatId, "This command cannot be used in the Heads Up topic.", {
-      message_thread_id: threadId,
-    });
-    return;
+  // console.log("Group:", group);
+  console.log(group)
+  if (!group || group === "Heads Up" || group == undefined) {
+    // Send error message, delete both command and error shortly after.
+    const sentMessage = await bot.sendMessage(
+      chatId,
+      "This command cannot be used in the Heads Up topic.",
+      { message_thread_id: threadId }
+    );
+    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    return 
   }
-  
   try {
     await moonWalkController.execute(chatId, group, threadId);
   } catch (error) {
@@ -240,7 +247,7 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
 /* === /Grouping Command Handler ===
    Restricted to admins. The bot uses the thread ID mapping to determine the group.
 */
-bot.onText(/\/traid_contest(?: (.+))?/, async (msg, match) => {
+bot.onText(/\/grouping(?: (.+))?/, async (msg, match) => {
   await traidContestController.handleCommand(msg, match);
 });
 

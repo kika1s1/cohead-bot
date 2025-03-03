@@ -75,7 +75,7 @@ export class TraidContestController {
     // Ensure leader names are provided.
     const leaderArg = match && match[1] ? match[1].trim() : null;
     if (!leaderArg) {
-      await bot.sendMessage(chatId, "Please provide leader names (comma separated). Usage: /traid_contest Leader1, Leader2, ...", { message_thread_id: threadId });
+      await bot.sendMessage(chatId, "Please provide leader names (comma separated). Usage: /traid_contest tamirat kebede, abdi esayas, ...", { message_thread_id: threadId });
       return;
     }
     // Split leader names.
