@@ -67,7 +67,6 @@ export class MoonWalkController {
     });
     message += `\n<b>Team:</b>\n`;
     message += `Step outside with your partner and engage in a 15 minute English conversation. Focus on enhancing your communication and speaking skills. Make the most of this opportunity to learn, share, and grow. Enjoy the session!`;
-
     bot.sendMessage(chatId, message, {
       parse_mode: 'HTML',
       message_thread_id: threadId,

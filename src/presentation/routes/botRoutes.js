@@ -2,21 +2,12 @@ import { bot } from "../../infrastructure/telegram/bot.js";
 import { PairProgrammingController } from "../controllers/PairProgrammingController.js";
 import { MoonWalkController } from "../controllers/MoonWalkController.js";
 import { HeadsUpController } from '../controllers/HeadsUpController.js';
-import { TraidContestController } from "../controllers/traidContestController.js";
+import { GroupingController } from "../controllers/groupingController.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import { LeetCodeAPI } from "../../infrastructure/leetcode/LeetCodeAPI.js";
-
-// Helper to check admin rights
-async function isUserAdmin(chatId, userId) {
-  try {
-    const admins = await bot.getChatAdministrators(chatId);
-    return admins.some(admin => admin.user.id === userId);
-  } catch (err) {
-    console.error("Failed to get chat admins:", err);
-    return false;
-  }
-}
+import getTopicName from "../../utils/getTopicName.js";
+import isUserAdmin from "../../utils/isUserAdmin.js";
 
 // Instantiate dependencies
 const studentRepository = new StudentRepository();
@@ -27,30 +18,7 @@ const leetCodeAPI = new LeetCodeAPI();
 const headsUpController = new HeadsUpController();
 const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository, leetCodeAPI);
 const moonWalkController = new MoonWalkController(studentRepository, sessionRepository);
-const traidContestController = new TraidContestController();
-
-// Helper to get topic (group) name by thread ID using fixed mappings
-async function getTopicName(chatId, threadId) {
-  try {
-    const mapping = {
-      281: "G61",
-      1010:"G62",
-      1015:"G63",
-      1021:"G64",
-      1048:"G65",
-      1057:"G66",
-      1080:"G67",
-      518:"G68",
-      255: "G69",
-      359: "Heads Up",
-      
-    };
-    return mapping[threadId] || threadId;
-  } catch (err) {
-    console.error("Failed to get topic name:", err);
-    return null;
-  }
-}
+const groupingController = new GroupingController();
 
 // In-memory state for pending pair programming messages.
 // Instead of storing just a group string, we store an object:
@@ -134,7 +102,7 @@ bot.onText(/\/pair_programming(?: .+)?/, async (msg) => {
     // Send error message, delete both command and error shortly after.
     const sentMessage = await bot.sendMessage(
       chatId,
-      "This command cannot be used in the Heads Up topic.",
+      "This command cannot be used here check where you are! ",
       { message_thread_id: threadId }
     );
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
@@ -175,22 +143,26 @@ bot.onText(/\/moon_walk(?: .+)?/, async (msg) => {
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     return;
   }
-  // Delete the original command message immediately.
+  // // Delete the original command message immediately.
   await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
   // console.log(chatId, threadId)
   
   const group = await getTopicName(chatId, threadId);
   // console.log("Group:", group);
   console.log(group)
-  if (!group || group === "Heads Up" || group == undefined) {
+  if (!group || group === "Heads Up") {
     // Send error message, delete both command and error shortly after.
     const sentMessage = await bot.sendMessage(
       chatId,
-      "This command cannot be used in the Heads Up topic.",
+      "This command cannot be used here check where you are! ",
       { message_thread_id: threadId }
     );
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-    return 
+    
+    setTimeout(async () => {
+      await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
+    }, 1000);
+    return;
   }
   try {
     await moonWalkController.execute(chatId, group, threadId);
@@ -215,12 +187,20 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
  
 
   const group = await getTopicName(chatId, threadId);
-  if (!group || !["G61","G62", "G63",  "G64","G65","G66","G67", "G68", "G69"].includes(group)) {
-    await bot.sendMessage(userId, "This command can only be used in G61 or G63 topics.");
+  if (!group || group === "Heads Up") {
+    // Send error message, delete both command and error shortly after.
+    const sentMessage = await bot.sendMessage(
+      chatId,
+      "This command cannot be used here check where you are! ",
+      { message_thread_id: threadId }
+    );
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    
+    setTimeout(async () => {
+      await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
+    }, 1000);
     return;
   }
-
   try {
    // Retrieve all Heads-Up submissions for the current day.
    const submissions = await headsUpController.getTodaysSubmissions();
@@ -248,7 +228,7 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
    Restricted to admins. The bot uses the thread ID mapping to determine the group.
 */
 bot.onText(/\/grouping(?: (.+))?/, async (msg, match) => {
-  await traidContestController.handleCommand(msg, match);
+  await groupingController.handleCommand(msg, match);
 });
 
 

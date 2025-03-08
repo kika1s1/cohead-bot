@@ -1,9 +1,12 @@
 import { bot } from "../../infrastructure/telegram/bot.js";
 import { HeadsUpSubmissionModel } from "../../infrastructure/database/mongoose/HeadsUpSubmissionModel.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
-import { TraidContest } from "../../application/use-cases/TraidContest.js";
+// import { TraidContest } from "../../application/use-cases/grouping.js";
+import { Grouping } from "../../application/use-cases/grouping.js";
 import * as  fuzzball from "fuzzball";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
+import getTopicName from "../../utils/getTopicName.js";
+import isUserAdmin from "../../utils/isUserAdmin.js";
 
 // Fuzzy comparer using fuzzball with a threshold of 85%.
 function isNameMatch(officialName, providedName) {
@@ -14,39 +17,12 @@ function isNameMatch(officialName, providedName) {
   return score >= 85;
 }
 
-// Helper to get the group (topic) name from the thread ID.
-async function getTopicName(chatId, threadId) {
-  const mapping = {
-    281: "G61",
-    1010: "G62",
-    1015: "G63",
-    1021: "G64",
-    1048: "G65",
-    1057: "G66",
-    1080: "G67",
-    518: "G68",
-    255: "G69",
-    359: "Heads Up",
-  };
-  return mapping[threadId] || `Unknown Group`;
-}
-
-// Helper to check admin rights.
-async function isUserAdmin(chatId, userId) {
-  try {
-    const admins = await bot.getChatAdministrators(chatId);
-    return admins.some(admin => admin.user.id === userId);
-  } catch (err) {
-    console.error("Failed to get chat admins:", err);
-    return false;
-  }
-}
-
-export class TraidContestController {
+// GroupingController
+export class GroupingController {
   constructor() {
     this.studentRepository = new StudentRepository();
     this.sessionRepository = new SessionRepository();
-    this.traidContestUseCase = new TraidContest(this.studentRepository, this.sessionRepository);
+    this.groupingUseCase = new Grouping(this.studentRepository, this.sessionRepository);
   }
 
   /**
@@ -67,15 +43,25 @@ export class TraidContestController {
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
     
     const group = await getTopicName(chatId, threadId);
-    if (group === "Heads Up" || group === "Unknown Group") {
-      await bot.sendMessage(chatId, "This command cannot be used in this topic.", { message_thread_id: threadId });
+    if (!group || group === "Heads Up") {
+      // Send error message, delete both command and error shortly after.
+      const sentMessage = await bot.sendMessage(
+        chatId,
+        "This command cannot be used here check where you are! ",
+        { message_thread_id: threadId }
+      );
+      await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+      
+      setTimeout(async () => {
+        await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
+      }, 1000);
       return;
     }
     
     // Ensure leader names are provided.
     const leaderArg = match && match[1] ? match[1].trim() : null;
     if (!leaderArg) {
-      await bot.sendMessage(chatId, "Please provide leader names (comma separated). Usage: /traid_contest tamirat kebede, abdi esayas, ...", { message_thread_id: threadId });
+      await bot.sendMessage(chatId, "Please provide leader names (comma separated). Usage: /grouping tamirat kebede, abdi esayas, ...", { message_thread_id: threadId });
       return;
     }
     // Split leader names.
@@ -118,7 +104,7 @@ export class TraidContestController {
       );
       
       // Execute the traid contest use-case.
-      const groups = await this.traidContestUseCase.execute(group, chosenLeaders, remainingStudents);
+      const groups = await this.groupingUseCase.execute(group, chosenLeaders, remainingStudents);
       
       // Build the response message.
       let responseMessage = `<b>Grouping for ${group}</b>\n\n`;
@@ -136,7 +122,7 @@ export class TraidContestController {
       
       await bot.sendMessage(chatId, responseMessage, { parse_mode: 'HTML', message_thread_id: threadId });
     } catch (error) {
-      console.error("Traid contest error:", error.message);
+      console.error("grouping error:", error.message);
       await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
     }
   }
