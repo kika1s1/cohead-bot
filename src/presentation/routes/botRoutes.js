@@ -3,11 +3,13 @@ import { PairProgrammingController } from "../controllers/PairProgrammingControl
 import { MoonWalkController } from "../controllers/MoonWalkController.js";
 import { HeadsUpController } from '../controllers/HeadsUpController.js';
 import { GroupingController } from "../controllers/groupingController.js";
+import { AbsenteeController } from "../controllers/AbsenteeController.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import { LeetCodeAPI } from "../../infrastructure/leetcode/LeetCodeAPI.js";
 import getTopicName from "../../utils/getTopicName.js";
 import isUserAdmin from "../../utils/isUserAdmin.js";
+import { AttendeeController } from "../controllers/AttendeeController.js";
 
 // Instantiate dependencies
 const studentRepository = new StudentRepository();
@@ -19,6 +21,8 @@ const headsUpController = new HeadsUpController();
 const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository, leetCodeAPI);
 const moonWalkController = new MoonWalkController(studentRepository, sessionRepository);
 const groupingController = new GroupingController();
+const absenteeController = new AbsenteeController();
+const attendeeController = new AttendeeController();
 
 // In-memory state for pending pair programming messages.
 // Instead of storing just a group string, we store an object:
@@ -179,56 +183,109 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const threadId = msg.message_thread_id;
+  
   await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
   if (!(await isUserAdmin(chatId, userId))) {
-   await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-   return;
+    await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+    return;
   }
- 
 
   const group = await getTopicName(chatId, threadId);
   if (!group || group === "Heads Up") {
-    // Send error message, delete both command and error shortly after.
     const sentMessage = await bot.sendMessage(
       chatId,
       "This command cannot be used here check where you are! ",
       { message_thread_id: threadId }
     );
     await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-    
     setTimeout(async () => {
       await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
     }, 1000);
     return;
   }
+
   try {
-   // Retrieve all Heads-Up submissions for the current day.
-   const submissions = await headsUpController.getTodaysSubmissions();
-  //  console.log(submissions)
+    // Retrieve all Heads-Up submissions for the current day.
+    const submissions = await headsUpController.getTodaysSubmissions();
+    // Filter the submissions to include only those from this group.
+    const filteredSubmissions = submissions.filter(
+      (submission) => submission.group === group
+    );
 
-   // Filter the submissions to include only students from the specified group.
-   const filteredSubmissions = submissions.filter(submission => submission.group === group);
+    // Separate into two arrays: excused (true) and unexcused (false).
+    const excused = filteredSubmissions.filter((sub) => sub.isExcused);
+    const unexcused = filteredSubmissions.filter((sub) => !sub.isExcused);
 
-   // Extract the names of the students who submitted their Heads-Up responses.
-   const studentNames = filteredSubmissions.map(submission => submission.studentName);
+    // Format each group with an appropriate bullet icon and message.
+    const excusedLines = excused.map(
+      (sub) => `🟢 ${sub.studentName}: ${sub.message || "No reason provided"}`
+    );
+    const unexcusedLines = unexcused.map(
+      (sub) => `🔴 ${sub.studentName}: ${sub.message || "No reason provided"}`
+    );
 
-   // Compile a summary, listing the names of students from that group who wrote a Heads-Up.
-  const formattedDate = new Date().toLocaleDateString();
-  const summary = `Heads-Up submissions for ${group} on ${formattedDate}:\n` + 
-    filteredSubmissions.map(submission => `🟡 ${submission.studentName}: ${submission.message || 'No reason provided'}`).join("\n");
+    const formattedDate = new Date().toLocaleDateString();
+    let summary = `Heads-Up submissions for ${group} on ${formattedDate}:\n\n`;
 
-   // Send the summary and the final count of the total number of students from that group who submitted their Heads-Up for the day.
-  await bot.sendMessage(userId, `${summary}\n\nTotal: ${studentNames.length}`);
+    if (excusedLines.length) {
+      summary += `*Excused*:\n${excusedLines.join("\n")}\n\n`;
+    }
+    if (unexcusedLines.length) {
+      summary += `*Unexcused*:\n${unexcusedLines.join("\n")}\n\n`;
+    }
+    
+    // Final total count
+    summary += `Total: ${filteredSubmissions.length}`;
+
+    // Send the summary as a private message to the user (admin).
+    await bot.sendMessage(userId, summary, { parse_mode: "Markdown" });
   } catch (error) {
-   await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
+    await bot.sendMessage(chatId, `Error: ${error.message}`, {
+      message_thread_id: threadId,
+    });
   }
 });
 
 /* === /Grouping Command Handler ===
-   Restricted to admins. The bot uses the thread ID mapping to determine the group.
+   When the /grouping command is issued, the bot starts an interactive selection
+   of active students (those who did not submit Heads Up) as potential group leaders.
 */
-bot.onText(/\/grouping(?: (.+))?/, async (msg, match) => {
-  await groupingController.handleCommand(msg, match);
+bot.onText(/\/grouping(?: .+)?/, async (msg) => {
+  await groupingController.startGrouping(msg);
+});
+
+/* === /absentee Command Handler ===
+   When the /absentee command is issued, the bot starts an interactive selection
+   of active students (those who did not submit Heads Up) for marking absentees.
+*/
+bot.onText(/\/absentee(?: .+)?/, async (msg) => {
+  await absenteeController.startAbsentee(msg);
+});
+
+/* === /attendee Command Handler ===
+   When the /attendee command is issued, the bot starts an interactive selection
+   of active students (those who did not submit Heads Up) for marking attendees.
+*/
+bot.onText(/\/attendee(?: .+)?/, async (msg) => {
+  await attendeeController.startAttendee(msg);
+});
+
+// Callback query handler for inline keyboard actions in grouping, absentee, and attendee.
+bot.on("callback_query", async (query) => {
+  // Attendee toggling
+  if (query.data.startsWith("att_toggle:") || query.data === "att_confirm") {
+    await attendeeController.handleCallback(query);
+  }
+
+  // Absentee toggling
+  if (query.data.startsWith("abs_toggle:") || query.data === "abs_confirm") {
+    await absenteeController.handleCallback(query);
+  }
+
+  // Grouping toggling
+  if (query.data.startsWith("toggle:") || query.data === "confirm") {
+    await groupingController.handleCallback(query);
+  }
 });
 
 

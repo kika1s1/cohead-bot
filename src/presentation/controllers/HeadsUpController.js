@@ -23,7 +23,8 @@ export class HeadsUpController {
     const { studentName, group } = await this.headsUpAnalysis.extractStudentData(message);
 
     if (!studentName || !group) {
-      return "Invalid message format: student name or group is unknown.";
+
+      return "Invalid message format: student name or group is unknown. Please rewrite your headsup";
     }
     
     try {

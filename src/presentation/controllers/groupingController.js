@@ -1,40 +1,42 @@
 import { bot } from "../../infrastructure/telegram/bot.js";
 import { HeadsUpSubmissionModel } from "../../infrastructure/database/mongoose/HeadsUpSubmissionModel.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
-// import { TraidContest } from "../../application/use-cases/grouping.js";
 import { Grouping } from "../../application/use-cases/grouping.js";
-import * as  fuzzball from "fuzzball";
+import * as fuzzball from "fuzzball";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import getTopicName from "../../utils/getTopicName.js";
 import isUserAdmin from "../../utils/isUserAdmin.js";
 
-// Fuzzy comparer using fuzzball with a threshold of 85%.
+// Fuzzy comparer using fuzzball.
 function isNameMatch(officialName, providedName) {
-  const normalize = str => str.toLowerCase().trim();
+  const normalize = (str) => str.toLowerCase().trim();
   const nOfficial = normalize(officialName);
   const nProvided = normalize(providedName);
   const score = fuzzball.token_set_ratio(nOfficial, nProvided);
   return score >= 85;
 }
 
-// GroupingController
 export class GroupingController {
   constructor() {
     this.studentRepository = new StudentRepository();
     this.sessionRepository = new SessionRepository();
     this.groupingUseCase = new Grouping(this.studentRepository, this.sessionRepository);
+    // In-memory pending grouping state keyed by chat id.
+    // Structure: { [chatId]: { group, threadId, activeStudents, selected: Set(), messageId } }
+    this.pendingGroupings = {};
   }
 
   /**
-   * Handles the /traid_contest command.
-   * Expects leader names (comma-separated) as argument via popkeyboard.
-   * Filters out students who submitted Heads Up and then pairs 2 students with 1 leader.
+   * Starts the grouping process.
+   * Fetches active students (those who did not submit Heads Up) and sends an inline keyboard
+   * for the admin to toggle leader selection.
    */
-  async handleCommand(msg, match) {
+  async startGrouping(msg) {
     const chatId = msg.chat.id;
     const threadId = msg.message_thread_id;
     const userId = msg.from.id;
     
+    // Check admin rights.
     if (!(await isUserAdmin(chatId, userId))) {
       await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
       return;
@@ -44,87 +46,168 @@ export class GroupingController {
     
     const group = await getTopicName(chatId, threadId);
     if (!group || group === "Heads Up") {
-      // Send error message, delete both command and error shortly after.
-      const sentMessage = await bot.sendMessage(
-        chatId,
-        "This command cannot be used here check where you are! ",
-        { message_thread_id: threadId }
-      );
-      await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
-      
-      setTimeout(async () => {
-        await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
-      }, 1000);
+      await bot.sendMessage(chatId, "This command cannot be used here. Check your topic.", { message_thread_id: threadId });
       return;
     }
     
-    // Ensure leader names are provided.
-    const leaderArg = match && match[1] ? match[1].trim() : null;
-    if (!leaderArg) {
-      await bot.sendMessage(chatId, "Please provide leader names (comma separated). Usage: /grouping tamirat kebede, abdi esayas, ...", { message_thread_id: threadId });
-      return;
-    }
-    // Split leader names.
-    const leaderNames = leaderArg.split(",").map(name => name.trim());
+    // Save adminId here:
+    this.pendingGroupings[chatId] = {
+      group,
+      threadId,
+      adminId: userId,   // <-- store the issuing admin’s userId
+      activeStudents: [],
+      selected: new Set(),
+      messageId: null,
+    };
+
+    // Fetch all students in the group.
+    const students = await this.studentRepository.findByGroup(group);
+    // Fetch today's Heads-Up submissions.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const submissions = await HeadsUpSubmissionModel.find({
+      group: group.toUpperCase(),
+      submittedAt: { $gte: today }
+    });
+    const submissionNames = submissions.map((sub) => sub.studentName);
+    // Filter out students who submitted Heads Up.
+    const activeStudents = students.filter((student) => {
+      return !submissionNames.some((subName) => isNameMatch(student.name, subName));
+    });
     
-    try {
-      // Fetch all students in the group.
-      const students = await this.studentRepository.findByGroup(group);
-      
-      // Get today's Heads-Up submissions for the group.
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const submissions = await HeadsUpSubmissionModel.find({
-        group: group.toUpperCase(),
-        submittedAt: { $gte: today }
+    // Save pending grouping state.
+    this.pendingGroupings[chatId] = {
+      group,
+      threadId,
+      adminId: userId,
+      activeStudents,
+      selected: new Set(), // will store student _id strings for potential leaders
+      messageId: null,
+    };
+
+    // Send inline keyboard message to let admin select leaders.
+    const keyboard = this._buildKeyboard(this.pendingGroupings[chatId].activeStudents, this.pendingGroupings[chatId].selected);
+    const sentMsg = await bot.sendMessage(
+      chatId,
+      `Select group leader(s) for ${group} by tapping on their name. When done, press <b>Confirm</b>.`,
+      {
+        parse_mode: "HTML",
+        reply_markup: { inline_keyboard: keyboard },
+        message_thread_id: threadId,
+      }
+    );
+    // Save the message id to update later.
+    this.pendingGroupings[chatId].messageId = sentMsg.message_id;
+  }
+
+  // Build inline keyboard where each button represents an active student.
+  _buildKeyboard(activeStudents, selectedSet) {
+    // Build an array of buttons (each row one button).
+    const buttons = activeStudents.map((student) => {
+      const text = selectedSet.has(String(student._id))
+        ? `✅ ${student.name}`
+        : student.name;
+      return [
+        {
+          text,
+          callback_data: `toggle:${student._id}`,
+        },
+      ];
+    });
+    // Add a confirm button in a separate row.
+    buttons.push([
+      {
+        text: "Confirm",
+        callback_data: "confirm",
+      },
+    ]);
+    return buttons;
+  }
+
+  /**
+   * Handles callback queries from the inline keyboard for grouping.
+   * Toggles selection or confirms leader selection.
+   */
+  async handleCallback(query) {
+    const data = query.data;
+    const chatId = query.message.chat.id;
+    const pending = this.pendingGroupings[chatId];
+    if (!pending) return; // No pending grouping in this chat.
+    // Only the admin who started /grouping can interact
+    
+    if (query.from.id !== pending.adminId) {
+      await bot.answerCallbackQuery(query.id, {
+        text: "Unauthorized.",
+        show_alert: true,
       });
-      const submissionNames = submissions.map(sub => sub.studentName);
-      
-      // Filter out students who submitted Heads Up.
-      const activeStudents = students.filter(student =>
-        !submissionNames.some(subName => isNameMatch(student.name, subName))
+      return;
+    }
+    
+    if (data.startsWith("toggle:")) {
+      const studentId = data.split(":")[1];
+      // Toggle selection.
+      if (pending.selected.has(studentId)) {
+        pending.selected.delete(studentId);
+      } else {
+        pending.selected.add(studentId);
+      }
+      // Update the inline keyboard.
+      const keyboard = this._buildKeyboard(pending.activeStudents, pending.selected);
+      await bot.editMessageReplyMarkup(
+        { inline_keyboard: keyboard },
+        { chat_id: chatId, message_id: pending.messageId, message_thread_id: pending.threadId }
       );
-      
-      // Find chosen leaders among active students using fuzzy matching.
-      const chosenLeaders = [];
-      leaderNames.forEach(lname => {
-        const leader = activeStudents.find(student => isNameMatch(student.name, lname));
-        if (leader && !chosenLeaders.some(l => l._id.equals(leader._id))) {
-          chosenLeaders.push(leader);
+      await bot.answerCallbackQuery(query.id);
+    } else if (data === "confirm") {
+      // Confirm selection.
+      await bot.answerCallbackQuery(query.id, { text: "Leaders confirmed" });
+      // Delete the inline keyboard message.
+      await bot.deleteMessage(chatId, pending.messageId).catch(() => {});
+      // Proceed with grouping.
+      await this.confirmGrouping(chatId, pending.threadId);
+      // Remove pending state.
+      delete this.pendingGroupings[chatId];
+    }
+  }
+
+  /**
+   * Once leaders are confirmed, performs grouping:
+   * Takes the selected leaders, removes them from active students,
+   * and distributes all remaining active students among the selected leaders.
+   * Sends the grouping result.
+   */
+  async confirmGrouping(chatId, threadId) {
+    const pending = this.pendingGroupings[chatId];
+    if (!pending) return;
+    const { group, activeStudents, selected } = pending;
+    // Get chosen leaders from activeStudents whose _id is in "selected".
+    const chosenLeaders = activeStudents.filter((student) =>
+      selected.has(String(student._id))
+    );
+    if (chosenLeaders.length === 0) {
+      await bot.sendMessage(chatId, "No group leaders were selected.", { message_thread_id: threadId });
+      return;
+    }
+    // Remove chosen leaders from activeStudents.
+    const remainingStudents = activeStudents.filter(
+      (student) => !selected.has(String(student._id))
+    );
+    // Execute grouping use-case: distribute all remaining students evenly among the chosen leaders.
+    const groups = await this.groupingUseCase.execute(group, chosenLeaders, remainingStudents);
+    // Build response message.
+    let responseMessage = `<b>Grouping for ${group}</b>\n\n`;
+    groups.forEach((grp, index) => {
+      responseMessage += `<b>Group ${index + 1}:</b>\n`;
+      grp.forEach((member) => {
+        if (chosenLeaders.some((leader) => leader._id.equals(member._id))) {
+          responseMessage += `⭐ ${member.name}\n`;
+        } else {
+          responseMessage += `- ${member.name}\n`;
         }
       });
-      if (chosenLeaders.length === 0) {
-        await bot.sendMessage(chatId, "No valid group leaders found among active students.", { message_thread_id: threadId });
-        return;
-      }
-      
-      // Remove the chosen leaders from the active pool.
-      const remainingStudents = activeStudents.filter(student =>
-        !chosenLeaders.some(leader => leader._id.equals(student._id))
-      );
-      
-      // Execute the traid contest use-case.
-      const groups = await this.groupingUseCase.execute(group, chosenLeaders, remainingStudents);
-      
-      // Build the response message.
-      let responseMessage = `<b>Grouping for ${group}</b>\n\n`;
-      groups.forEach((grp, index) => {
-        responseMessage += `<b>Group ${index + 1}:</b>\n`;
-        grp.forEach(member => {
-          if (chosenLeaders.some(leader => leader._id.equals(member._id))) {
-            responseMessage += `⭐ ${member.name}\n`;
-          } else {
-            responseMessage += `${member.name}\n`;
-          }
-        });
-        responseMessage += `\n`;
-      });
-      
-      await bot.sendMessage(chatId, responseMessage, { parse_mode: 'HTML', message_thread_id: threadId });
-    } catch (error) {
-      console.error("grouping error:", error.message);
-      await bot.sendMessage(chatId, `Error: ${error.message}`, { message_thread_id: threadId });
-    }
+      responseMessage += `\n`;
+    });
+    await bot.sendMessage(chatId, responseMessage, { parse_mode: "HTML", message_thread_id: threadId });
   }
 }
 
