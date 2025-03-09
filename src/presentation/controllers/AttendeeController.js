@@ -35,9 +35,13 @@ export class AttendeeController {
 
     const group = await getTopicName(chatId, threadId);
     if (!group || group === "Heads Up") {
-      const sent = await bot.sendMessage(chatId, "This command cannot be used here. Check your topic.", {
-        message_thread_id: threadId,
-      });
+      const sent = await bot.sendMessage(
+        chatId,
+        "This command cannot be used here. Check your topic.",
+        {
+          message_thread_id: threadId,
+        }
+      );
       // Optionally delete the error message after 2 seconds
       setTimeout(async () => {
         await bot.deleteMessage(chatId, sent.message_id).catch(() => {});
@@ -51,9 +55,13 @@ export class AttendeeController {
     }).sort({ submittedAt: -1 });
 
     if (!absentDocs.length) {
-      await bot.sendMessage(chatId, `No absentees found for ${group}.`, {
+      const sent= await bot.sendMessage(chatId, `No absentees found for ${group}.`, {
         message_thread_id: threadId,
       });
+      // Optionally delete the error message after 2 seconds
+      setTimeout(async () => {
+        await bot.deleteMessage(chatId, sent.message_id).catch(() => {});
+      }, 2000);
       return;
     }
 
@@ -68,7 +76,10 @@ export class AttendeeController {
     };
 
     // Build inline keyboard
-    const keyboard = this._buildKeyboard(absentDocs, this.pendingAttendee[chatId].selected);
+    const keyboard = this._buildKeyboard(
+      absentDocs,
+      this.pendingAttendee[chatId].selected
+    );
     const sentMsg = await bot.sendMessage(
       chatId,
       `Select who to mark *present* in ${group}. Toggle with a tap, then press <b>Confirm</b>.`,
@@ -86,14 +97,16 @@ export class AttendeeController {
    */
   _buildKeyboard(absentDocs, selectedSet) {
     // Each row is a single student
-    const buttons = absentDocs.map(doc => {
+    const buttons = absentDocs.map((doc) => {
       const text = selectedSet.has(String(doc._id))
         ? `✅ ${doc.studentName}`
         : `🔴 ${doc.studentName}`;
-      return [{
-        text,
-        callback_data: `att_toggle:${doc._id}`,
-      }];
+      return [
+        {
+          text,
+          callback_data: `att_toggle:${doc._id}`,
+        },
+      ];
     });
     // Add a confirm button at the bottom
     buttons.push([
@@ -120,7 +133,7 @@ export class AttendeeController {
     if (query.from.id !== pending.adminId) {
       await bot.answerCallbackQuery(query.id, {
         text: "Unauthorized.",
-        show_alert: true
+        show_alert: true,
       });
       return;
     }
@@ -132,10 +145,17 @@ export class AttendeeController {
       } else {
         pending.selected.add(docId);
       }
-      const keyboard = this._buildKeyboard(pending.absentDocs, pending.selected);
+      const keyboard = this._buildKeyboard(
+        pending.absentDocs,
+        pending.selected
+      );
       await bot.editMessageReplyMarkup(
         { inline_keyboard: keyboard },
-        { chat_id: chatId, message_id: pending.messageId, message_thread_id: pending.threadId }
+        {
+          chat_id: chatId,
+          message_id: pending.messageId,
+          message_thread_id: pending.threadId,
+        }
       );
       await bot.answerCallbackQuery(query.id);
     } else if (data === "att_confirm") {
@@ -143,7 +163,7 @@ export class AttendeeController {
 
       // Delete the inline keyboard message in the group chat
       await bot.deleteMessage(chatId, pending.messageId).catch(() => {});
-      
+
       // Then mark selected absentees as present
       await this.confirmAttendee(chatId);
       delete this.pendingAttendee[chatId];
@@ -161,7 +181,7 @@ export class AttendeeController {
     const { group, threadId, absentDocs, selected } = pending;
 
     // Filter out the doc objects that were selected
-    const toUpdate = absentDocs.filter(doc => selected.has(String(doc._id)));
+    const toUpdate = absentDocs.filter((doc) => selected.has(String(doc._id)));
 
     if (!toUpdate.length) {
       await bot.sendMessage(chatId, "No changes were made.", {
@@ -177,7 +197,7 @@ export class AttendeeController {
 
     // Build a summary
     let summary = `<b>Now Present in ${group}:</b>\n\n`;
-    toUpdate.forEach(doc => {
+    toUpdate.forEach((doc) => {
       summary += `✅ ${doc.studentName}\n`;
     });
     await bot.sendMessage(pending.adminId, summary, {

@@ -38,11 +38,17 @@ export class AbsenteeController {
 
     const group = await getTopicName(chatId, threadId);
     if (!group || group === "Heads Up") {
-      await bot.sendMessage(
+      // Send error message, delete both command and error shortly after.
+      const sentMessage = await bot.sendMessage(
         chatId,
-        "This command cannot be used here. Check your topic.",
+        "This command cannot be used here check where you are! ",
         { message_thread_id: threadId }
       );
+      await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+      
+      setTimeout(async () => {
+        await bot.deleteMessage(chatId, sentMessage.message_id).catch(() => {});
+      }, 1000);
       return;
     }
 

@@ -32,16 +32,30 @@ const pendingPairProgramming = {};
 /* === Message Handler for Heads Up Analysis ===
    Only messages posted in the "Heads Up" thread (359) are analyzed.
 */
+// Handle new messages
 bot.on("message", async (msg) => {
+  await processMessage(msg);
+});
+
+// Handle edited messages
+bot.on("edited_message", async (msg) => {
+  await processMessage(msg);
+});
+
+// Common function to process both new and edited messages
+async function processMessage(msg) {
   if (!msg.text) return;
-  
+
   const chatId = msg.chat.id;
   const messageText = msg.text;
   const threadId = msg.message_thread_id;
-  // console.log(threadId)
   const topicName = await getTopicName(chatId, threadId);
   if (!topicName) return;
-  
+
+  if (messageText.startsWith("/")) {
+    return;
+  }
+
   // Heads Up messages are handled separately.
   if (topicName === "Heads Up") {
     try {
@@ -56,22 +70,22 @@ bot.on("message", async (msg) => {
       console.error("Heads Up handling error:", error.message);
     }
   }
-  
+
   // Process pending pair programming question details.
   // We expect the admin’s reply (comma-separated links) to follow the command prompt.
   if (pendingPairProgramming[chatId]) {
     const pending = pendingPairProgramming[chatId];
     delete pendingPairProgramming[chatId];
-    
+
     // Delete the admin's details message (current msg) and the earlier prompt message.
     await Promise.all([
       bot.deleteMessage(chatId, msg.message_id).catch(() => {}),
-      bot.deleteMessage(chatId, pending.promptMsgId).catch(() => {})
+      bot.deleteMessage(chatId, pending.promptMsgId).catch(() => {}),
     ]);
-    
+
     // Split the incoming message by commas into an array of links.
-    const links = messageText.split(",").map(link => link.trim()).filter(link => link);
-    
+    const links = messageText.split(",").map((link) => link.trim()).filter((link) => link);
+
     try {
       // Fetch questions, generating titles from the links.
       const questions = await leetCodeAPI.fetchQuestions(links);
@@ -83,8 +97,7 @@ bot.on("message", async (msg) => {
       });
     }
   }
-});
-
+}
 /* === /pair_programming Command Handler ===
    Restricted to admins. The bot uses the thread ID mapping to determine the group.
    If the command is used in the Heads Up topic, an error message is sent then deleted.
@@ -153,7 +166,6 @@ bot.onText(/\/moon_walk(?: .+)?/, async (msg) => {
   
   const group = await getTopicName(chatId, threadId);
   // console.log("Group:", group);
-  console.log(group)
   if (!group || group === "Heads Up") {
     // Send error message, delete both command and error shortly after.
     const sentMessage = await bot.sendMessage(
