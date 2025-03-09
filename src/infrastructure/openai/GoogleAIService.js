@@ -14,7 +14,7 @@ export async function analyzeHeadsUp(message) {
     Analyze the following heads-up message and determine if it is valid.
     A valid heads-up message must include:
       1. The student's full name.
-      2. The group number (e.g., G61, G64, etc.). group start with G and followed by two numbers from G68 means a person is from Group 68
+      2. The group number (e.g., G61, G64, etc.). group start with G and followed by two numbers from 61-69 only example from G68 means a person is from Group 68
       3. A reason for absence or delay should reasable and valid so that they can't make the class.
       4. tolerate spelling error and puncation error if it is minor and understandable 
     If any of these elements are missing, provide  polite specific correction for students with  short sentence less than three lines of  feedback indicating what is missing from the above three only.

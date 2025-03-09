@@ -1,5 +1,7 @@
 import { HeadsUpSubmissionModel } from '../../infrastructure/database/mongoose/HeadsUpSubmissionModel.js';
 import { HeadsUpAnalysis } from '../../application/use-cases/HeadsUpAnalysis.js';
+import { StudentModel } from '../../infrastructure/database/mongoose/StudentModel.js';
+import * as fuzzball from 'fuzzball';
 
 export class HeadsUpController {
   constructor() {
@@ -26,7 +28,19 @@ export class HeadsUpController {
 
       return "Invalid message format: student name or group is unknown. Please rewrite your headsup";
     }
-    
+    // Verify that the student belongs to the mentioned group using fuzzball
+    const studentCandidates = await StudentModel.find({ group: { $regex: group, $options: 'i' } });
+    let studentRecord;
+    for (const student of studentCandidates) {
+      const nameScore = fuzzball.token_set_ratio(studentName, student.name);
+      if (nameScore >= 80) { // threshold for a good fuzzy match
+        studentRecord = student;
+        break;
+      }
+    }
+    if (!studentRecord) {
+      return `The student ${studentName} is not registered under group ${group}. Please correct your information.`;
+    }
     try {
       await HeadsUpSubmissionModel.create({
         studentName,
