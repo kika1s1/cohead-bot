@@ -177,11 +177,14 @@ export class AbsenteeController {
     );
 
     if (absentStudents.length === 0) {
-      await bot.sendMessage(
+      const sentMsg = await bot.sendMessage(
         chatId,
         "No absentees were selected.",
         { message_thread_id: threadId }
       );
+      setTimeout(async () => {
+        await bot.deleteMessage(chatId, sentMsg.message_id).catch(() => {});
+      }, 2000);
       return;
     }
 
