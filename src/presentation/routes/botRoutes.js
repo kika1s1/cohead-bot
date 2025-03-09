@@ -2,7 +2,7 @@ import { bot } from "../../infrastructure/telegram/bot.js";
 import { PairProgrammingController } from "../controllers/PairProgrammingController.js";
 import { MoonWalkController } from "../controllers/MoonWalkController.js";
 import { HeadsUpController } from '../controllers/HeadsUpController.js';
-import { GroupingController } from "../controllers/groupingController.js";
+import { GroupingController } from "../controllers/GroupingController.js";
 import { AbsenteeController } from "../controllers/AbsenteeController.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";

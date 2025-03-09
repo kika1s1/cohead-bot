@@ -1,21 +1,11 @@
 import { bot } from "../../infrastructure/telegram/bot.js";
 import { HeadsUpSubmissionModel } from "../../infrastructure/database/mongoose/HeadsUpSubmissionModel.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
-import { Grouping } from "../../application/use-cases/grouping.js";
-import * as fuzzball from "fuzzball";
+import { Grouping } from "../../application/use-cases/Grouping.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import getTopicName from "../../utils/getTopicName.js";
 import isUserAdmin from "../../utils/isUserAdmin.js";
-
-// Fuzzy comparer using fuzzball.
-function isNameMatch(officialName, providedName) {
-  const normalize = (str) => str.toLowerCase().trim();
-  const nOfficial = normalize(officialName);
-  const nProvided = normalize(providedName);
-  const score = fuzzball.token_set_ratio(nOfficial, nProvided);
-  return score >= 85;
-}
-
+import isNameMatch from "../../utils/isNameMatch.js";
 export class GroupingController {
   constructor() {
     this.studentRepository = new StudentRepository();

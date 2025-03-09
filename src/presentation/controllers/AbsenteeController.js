@@ -3,12 +3,7 @@ import { StudentRepository } from "../../domain/repositories/StudentRepository.j
 import { HeadsUpSubmissionModel } from "../../infrastructure/database/mongoose/HeadsUpSubmissionModel.js";
 import getTopicName from "../../utils/getTopicName.js";
 import isUserAdmin from "../../utils/isUserAdmin.js";
-import * as fuzzball from "fuzzball";
-
-function isNameMatch(officialName, providedName) {
-  const normalize = (str) => str.toLowerCase().trim();
-  return fuzzball.token_set_ratio(normalize(officialName), normalize(providedName)) >= 85;
-}
+import isNameMatch from "../../utils/isNameMatch.js";
 
 export class AbsenteeController {
   constructor() {
