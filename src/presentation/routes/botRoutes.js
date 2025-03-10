@@ -74,10 +74,23 @@ async function processMessage(msg) {
   // Process pending pair programming question details.
   // We expect the admin’s reply (comma-separated links) to follow the command prompt.
   if (pendingPairProgramming[chatId]) {
+    // Verify that the sender is an admin.
+    if (!(await isUserAdmin(chatId, msg.from.id))) {
+      // Not authorized: delete the message and notify.
+      await bot.deleteMessage(chatId, msg.message_id).catch(() => {});
+      const sent = await bot.sendMessage(chatId, "Unauthorized action.", {
+        message_thread_id: msg.message_thread_id,
+      }).catch(() => {});
+      setTimeout(() => {
+        bot.deleteMessage(chatId, sent.message_id).catch(() => {});
+      }, 5000);
+      return;
+    }
+
     const pending = pendingPairProgramming[chatId];
     delete pendingPairProgramming[chatId];
 
-    // Delete the admin's details message (current msg) and the earlier prompt message.
+    // Delete both the current reply and the earlier prompt message.
     await Promise.all([
       bot.deleteMessage(chatId, msg.message_id).catch(() => {}),
       bot.deleteMessage(chatId, pending.promptMsgId).catch(() => {}),
