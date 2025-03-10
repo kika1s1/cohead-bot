@@ -19,11 +19,11 @@ export class MoonWalkController {
       group: group.toUpperCase(),
       submittedAt: { $gte: today }
     });
-    const submissionNames = submissions.map(sub => sub.studentName);
+    const submissionTelegramIds = submissions.map(sub => sub.telegram_id);
 
     // Filter out students that match a heads-up submission approximately.
     const activeStudents = students.filter(student => {
-      return !submissionNames.some(subName => isNameMatch(student.name, subName));
+      return !submissionTelegramIds.includes(student.telegram_id);
     });
 
     // Pass activeStudents to the use-case.

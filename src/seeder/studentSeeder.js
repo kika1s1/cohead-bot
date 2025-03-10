@@ -295,7 +295,27 @@ async function seedStudents() {
     // Optionally clear existing students for each group
     await StudentModel.deleteMany({ group: { $in: ["G61", "G62", "G63", "G64", "G65", "G66", "G67", "G68", "G69"] } });
     
-    const inserted = await StudentModel.insertMany(students);
+    // Helper to assign school based on group
+    function getSchoolByGroup(group) {
+      if (["G68", "G69"].includes(group)) {
+        return "ASTU";
+      } else if (["G65", "G66", "G67"].includes(group)) {
+        return "AASTU";
+      } else if (["G61", "G62", "G63", "G64"].includes(group)) {
+        return "AIT";
+      }
+      return "";
+    }
+    
+    // Map each student to include the school and other details
+    const studentsWithSchool = students.map(student => ({
+      ...student,
+      school: getSchoolByGroup(student.group),
+      telegram_id: "",   // initially empty, to be updated upon registration
+      isRegistered: false
+    }));
+    
+    const inserted = await StudentModel.insertMany(studentsWithSchool);
     console.log(`Inserted ${inserted.length} students`);
     process.exit(0);
   } catch (err) {

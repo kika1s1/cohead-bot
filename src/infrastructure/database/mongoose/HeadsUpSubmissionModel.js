@@ -13,6 +13,9 @@ const HeadsUpSubmissionSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  telegram_id: {               
+    type: String,
+  },
   submittedAt: {
     type: Date,
     default: Date.now,

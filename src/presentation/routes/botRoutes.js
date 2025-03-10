@@ -4,25 +4,26 @@ import { MoonWalkController } from "../controllers/MoonWalkController.js";
 import { HeadsUpController } from '../controllers/HeadsUpController.js';
 import { GroupingController } from "../controllers/GroupingController.js";
 import { AbsenteeController } from "../controllers/AbsenteeController.js";
+import { AttendeeController } from "../controllers/AttendeeController.js";
+import { AttendanceController } from "../controllers/AttendanceController.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
-import { LeetCodeAPI } from "../../infrastructure/leetcode/LeetCodeAPI.js";
-import getTopicName from "../../utils/getTopicName.js";
+import { RegistrationController } from "../controllers/RegistrationController.js";
 import isUserAdmin from "../../utils/isUserAdmin.js";
-import { AttendeeController } from "../controllers/AttendeeController.js";
-
+import getTopicName from "../../utils/getTopicName.js";
 // Instantiate dependencies
 const studentRepository = new StudentRepository();
 const sessionRepository = new SessionRepository();
-const leetCodeAPI = new LeetCodeAPI();
 
 // Initialize controllers with all required dependencies
 const headsUpController = new HeadsUpController();
-const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository, leetCodeAPI);
+const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository);
 const moonWalkController = new MoonWalkController(studentRepository, sessionRepository);
 const groupingController = new GroupingController();
 const absenteeController = new AbsenteeController();
 const attendeeController = new AttendeeController();
+const attendanceController = new AttendanceController();
+const registrationController = new RegistrationController();
 
 // In-memory state for pending pair programming messages.
 // Instead of storing just a group string, we store an object:
@@ -59,7 +60,8 @@ async function processMessage(msg) {
   // Heads Up messages are handled separately.
   if (topicName === "Heads Up") {
     try {
-      const response = await headsUpController.handleHeadsUp(chatId, messageText);
+      const telegram_id = msg.from?.id;
+      const response = await headsUpController.handleHeadsUp(chatId, messageText, telegram_id);
       if (response) {
         await bot.sendMessage(chatId, response, {
           reply_to_message_id: msg.message_id,
@@ -297,22 +299,52 @@ bot.onText(/\/attendee(?: .+)?/, async (msg) => {
   await attendeeController.startAttendee(msg);
 });
 
+// /start command handler to display a "Register" button.
+bot.onText(/\/start(?: .+)?/, async (msg) => {
+    await registrationController.startRegistration(msg);
+});
+
+// Registration command handler.
+bot.onText(/\/register(?: .+)?/, async (msg) => {
+  await registrationController.startRegistration(msg);
+});
+
+// Other command handlers...
+bot.onText(/\/attendance(?: .+)?/, async (msg) => {
+  await attendanceController.startAttendance(msg);
+});
+
 // Callback query handler for inline keyboard actions in grouping, absentee, and attendee.
 bot.on("callback_query", async (query) => {
+  if (query.data.startsWith("reg_")) {
+    await registrationController.handleCallback(query);
+    return;
+  }
+
+  // Attendance toggling and confirmation.
+  if (query.data.startsWith("attd_toggle:") || query.data === "attd_confirm") {
+    await attendanceController.handleCallback(query);
+    return;
+  }
+
   // Attendee toggling
   if (query.data.startsWith("att_toggle:") || query.data === "att_confirm") {
     await attendeeController.handleCallback(query);
+    return;
   }
 
   // Absentee toggling
   if (query.data.startsWith("abs_toggle:") || query.data === "abs_confirm") {
     await absenteeController.handleCallback(query);
+    return;
   }
 
   // Grouping toggling
   if (query.data.startsWith("toggle:") || query.data === "confirm") {
     await groupingController.handleCallback(query);
+    return;
   }
 });
+
 
 
