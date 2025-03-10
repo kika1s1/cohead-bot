@@ -241,12 +241,14 @@ bot.onText(/\/excused(?: .+)?/, async (msg) => {
     const excused = filteredSubmissions.filter((sub) => sub.isExcused);
     const unexcused = filteredSubmissions.filter((sub) => !sub.isExcused);
 
-    // Format each group with an appropriate bullet icon and message.
+    // Format each group with an appropriate bullet icon, submission time, and message.
     const excusedLines = excused.map(
-      (sub) => `🟢 ${sub.studentName}: ${sub.message || "No reason provided"}`
+      (sub) =>
+      `🟢 [${new Date(sub.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}] ${sub.studentName}: ${sub.message || "No reason provided"}`
     );
     const unexcusedLines = unexcused.map(
-      (sub) => `🔴 ${sub.studentName}: ${sub.message || "No reason provided"}`
+      (sub) =>
+      `🔴 [${new Date(sub.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}]${sub.studentName}: ${sub.message || "No reason provided"}`
     );
 
     const formattedDate = new Date().toLocaleDateString();

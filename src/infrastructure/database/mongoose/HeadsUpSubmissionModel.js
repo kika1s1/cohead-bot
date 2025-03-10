@@ -17,10 +17,12 @@ const HeadsUpSubmissionSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
-  isExcused:{
-    type:Boolean,
-    default:true
+  isExcused: {
+    type: Boolean,
+    default: true,
   }
+}, {
+  timestamps: true
 });
 
 export const HeadsUpSubmissionModel = mongoose.model('HeadsUpSubmission', HeadsUpSubmissionSchema);
