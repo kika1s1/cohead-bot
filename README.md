@@ -204,6 +204,6 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 
 ## Contact
 
-- **Author:** Tamirat Kebede  
+- **Author:** Tamirat Kebede (kika1s1)
 - **GitHub:** [https://github.com/kika1s1](https://github.com/kika1s1)  
 - **Email:** tamiratkebede120@gmail.com
