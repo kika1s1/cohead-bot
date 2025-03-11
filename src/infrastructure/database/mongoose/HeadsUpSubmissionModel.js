@@ -23,6 +23,10 @@ const HeadsUpSubmissionSchema = new mongoose.Schema({
   isExcused: {
     type: Boolean,
     default: true,
+  },
+  checkout:{
+    type: Boolean,
+    default:false
   }
 }, {
   timestamps: true

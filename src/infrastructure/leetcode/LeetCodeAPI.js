@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 export class LeetCodeAPI {
   /**
    * Accepts either an array of strings (links separated by comma) or an array of objects:

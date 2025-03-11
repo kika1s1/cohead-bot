@@ -9,15 +9,19 @@ import { AttendanceController } from "../controllers/AttendanceController.js";
 import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
 import { SessionRepository } from "../../domain/repositories/SessionRepository.js";
 import { RegistrationController } from "../controllers/RegistrationController.js";
+import { LeetCodeAPI } from "../../infrastructure/leetcode/LeetCodeAPI.js";
 import isUserAdmin from "../../utils/isUserAdmin.js";
 import getTopicName from "../../utils/getTopicName.js";
 // Instantiate dependencies
 const studentRepository = new StudentRepository();
 const sessionRepository = new SessionRepository();
 
+// Initialize leetcode api
+const leetCodeAPI = new LeetCodeAPI();
+
 // Initialize controllers with all required dependencies
 const headsUpController = new HeadsUpController();
-const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository);
+const pairProgrammingController = new PairProgrammingController(studentRepository, sessionRepository, leetCodeAPI);
 const moonWalkController = new MoonWalkController(studentRepository, sessionRepository);
 const groupingController = new GroupingController();
 const absenteeController = new AbsenteeController();
@@ -25,9 +29,8 @@ const attendeeController = new AttendeeController();
 const attendanceController = new AttendanceController();
 const registrationController = new RegistrationController();
 
-// In-memory state for pending pair programming messages.
-// Instead of storing just a group string, we store an object:
-// { group: string, promptMsgId: number }
+
+
 const pendingPairProgramming = {};
 
 /* === Message Handler for Heads Up Analysis ===
