@@ -190,9 +190,12 @@ export class AttendeeController {
       return;
     }
 
-    // Update each doc in the DB
+    // Update each doc in the DB, marking them as excused and checkout true
     for (const doc of toUpdate) {
-      await HeadsUpSubmissionModel.deleteOne({ _id: doc._id });
+      await HeadsUpSubmissionModel.updateOne(
+      { _id: doc._id },
+      { isExcused: true, checkOut: true }
+      );
     }
 
     // Build a summary

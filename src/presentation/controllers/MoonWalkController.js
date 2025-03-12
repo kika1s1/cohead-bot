@@ -19,7 +19,9 @@ export class MoonWalkController {
       group: group.toUpperCase(),
       submittedAt: { $gte: today }
     });
-    const submissionTelegramIds = submissions.map(sub => sub.telegram_id);
+    // Filter out submissions where checkout is true.
+    const activeSubmissions = submissions.filter(submission => submission.checkOut !== true);
+    const submissionTelegramIds = activeSubmissions.map(sub => sub.telegram_id);
 
     // Filter out students that match a heads-up submission approximately.
     const activeStudents = students.filter(student => {

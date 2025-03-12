@@ -66,7 +66,8 @@ export class GroupingController {
     today.setHours(0, 0, 0, 0);
     const submissions = await HeadsUpSubmissionModel.find({
       group: group.toUpperCase(),
-      submittedAt: { $gte: today }
+      submittedAt: { $gte: today },
+      checkOut:false
     });
     const submissionNames = submissions.map((sub) => sub.studentName);
     // Filter out students who submitted Heads Up.

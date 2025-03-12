@@ -24,7 +24,7 @@ const HeadsUpSubmissionSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-  checkout:{
+  checkOut:{
     type: Boolean,
     default:false
   }

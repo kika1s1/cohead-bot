@@ -18,17 +18,18 @@ export class PairProgrammingController {
     today.setHours(0, 0, 0, 0);
     const submissions = await HeadsUpSubmissionModel.find({
       group: group.toUpperCase(),
-      submittedAt: { $gte: today }
+      submittedAt: { $gte: today },
+      checkedOut: false,
     });
 
-    // Extract names from submissions.
-    const submissionNames = submissions.map(sub => sub.studentName);
+    // Filter out submissions where checkout is true.
+    const activeSubmissions = submissions.filter(submission => submission.checkOut !== true);
+    const submissionTelegramIds = activeSubmissions.map(sub => sub.telegram_id);
 
-    // Filter out any student that approximately matches any submitted name.
+    // Filter out students that match a heads-up submission approximately.
     const activeStudents = students.filter(student => {
-      return !submissionNames.some(subName => isNameMatch(student.name, subName));
+      return !submissionTelegramIds.includes(student.telegram_id);
     });
-
     // Pass activeStudents to the use-case.
     const { pairs, questions } = await this.pairProgramming.execute(group, questionDetails, activeStudents);
 

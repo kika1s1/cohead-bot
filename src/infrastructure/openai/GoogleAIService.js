@@ -27,7 +27,7 @@ export async function analyzeHeadsUp(message) {
     // Return the generated feedback (trimmed)
     return result.response.text().trim();
   } catch (error) {
-    console.error("Error calling Gemini:", error);
+    console.error("Error calling Gemini:");
     throw new Error("Failed to analyze heads-up message using Gemini API");
   }
 }

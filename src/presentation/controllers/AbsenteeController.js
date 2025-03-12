@@ -190,6 +190,7 @@ export class AbsenteeController {
         group: group.toUpperCase(),
         message: "did not write any headsup",
         isExcused: false,
+        
       });
     }
 

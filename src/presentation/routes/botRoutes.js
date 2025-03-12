@@ -302,11 +302,6 @@ bot.onText(/\/attendee(?: .+)?/, async (msg) => {
   await attendeeController.startAttendee(msg);
 });
 
-// /start command handler to display a "Register" button.
-bot.onText(/\/start(?: .+)?/, async (msg) => {
-    await registrationController.startRegistration(msg);
-});
-
 // Registration command handler.
 bot.onText(/\/register(?: .+)?/, async (msg) => {
   await registrationController.startRegistration(msg);
