@@ -200,9 +200,9 @@ export class GroupingController {
       responseMessage += `<b>Group ${index + 1}:</b>\n`;
       grp.forEach((member) => {
         if (chosenLeaders.some((leader) => leader._id.equals(member._id))) {
-          responseMessage += `⭐ ${member.name}\n`;
+          responseMessage += `${member.name}\n`;
         } else {
-          responseMessage += `- ${member.name}\n`;
+          responseMessage += `${member.name}\n`;
         }
       });
       responseMessage += `\n`;
