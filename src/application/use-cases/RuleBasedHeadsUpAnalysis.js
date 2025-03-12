@@ -8,7 +8,7 @@ export class RuleBasedHeadsUpAnalysis {
       const requiredFields = [
         { keyword: 'hey team', description: 'Start with "Hey team"' },
         { keyword: 'this is', description: 'Include "this is" followed by your full name' },
-        { keyword: 'from g', description: 'Include your group number (e.g., G61)' },
+        { keyword: 'from g', description: 'Include your group number (e.g., G61 upto G69)' },
         { keyword: 'because', description: 'Provide a clear reason for absence or delay' },
       ];
   
