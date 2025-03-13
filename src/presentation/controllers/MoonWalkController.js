@@ -17,15 +17,17 @@ export class MoonWalkController {
     today.setHours(0, 0, 0, 0);
     const submissions = await HeadsUpSubmissionModel.find({
       group: group.toUpperCase(),
-      submittedAt: { $gte: today }
+      submittedAt: { $gte: today },
+      checkOut:false,
     });
     // Filter out submissions where checkout is true.
-    const activeSubmissions = submissions.filter(submission => submission.checkOut !== true);
-    const submissionTelegramIds = activeSubmissions.map(sub => sub.telegram_id);
+    // const activeSubmissions = submissions.filter(submission => submission.checkOut !== true);
+    const submissionTelegramIds = submissions.map(sub => sub._id);
+    // console.log(submissionTelegramIds)
 
     // Filter out students that match a heads-up submission approximately.
     const activeStudents = students.filter(student => {
-      return !submissionTelegramIds.includes(student.telegram_id);
+      return !submissionTelegramIds.includes(student._id);
     });
 
     // Pass activeStudents to the use-case.

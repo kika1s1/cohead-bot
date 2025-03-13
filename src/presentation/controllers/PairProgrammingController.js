@@ -23,12 +23,12 @@ export class PairProgrammingController {
     });
 
     // Filter out submissions where checkout is true.
-    const activeSubmissions = submissions.filter(submission => submission.checkOut !== true);
-    const submissionTelegramIds = activeSubmissions.map(sub => sub.telegram_id);
+    // const activeSubmissions = submissions.filter(submission => submission.checkOut !== true);
+    const submissionTelegramIds = submissions.map(sub => sub._id);
 
     // Filter out students that match a heads-up submission approximately.
     const activeStudents = students.filter(student => {
-      return !submissionTelegramIds.includes(student.telegram_id);
+      return !submissionTelegramIds.includes(student._id);
     });
     // Pass activeStudents to the use-case.
     const { pairs, questions } = await this.pairProgramming.execute(group, questionDetails, activeStudents);
