@@ -190,7 +190,8 @@ export class AbsenteeController {
         group: group.toUpperCase(),
         message: "did not write any headsup",
         isExcused: false,
-        telegram_id:student.telegram_id
+        telegram_id:student.telegram_id,
+        _id:student._id
         
       });
     }

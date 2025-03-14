@@ -48,10 +48,15 @@ export class AttendeeController {
       }, 2000);
       return;
     }
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
 
     // Fetch all records for this group
     const absentDocs = await HeadsUpSubmissionModel.find({
       group: group.toUpperCase(),
+      submittedAt: { $gte: startOfToday, $lte: endOfToday }
     }).sort({ submittedAt: -1 });
 
     if (!absentDocs.length) {
