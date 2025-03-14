@@ -69,10 +69,11 @@ export class GroupingController {
       submittedAt: { $gte: today },
       checkOut:false
     });
-    const submissionNames = submissions.map((sub) => sub.studentName);
-    // Filter out students who submitted Heads Up.
-    const activeStudents = students.filter((student) => {
-      return !submissionNames.some((subName) => isNameMatch(student.name, subName));
+    // console.log("submission", submissions)
+    const submissionStudentIds = submissions.map(sub => sub._id.toString());
+    // Filter out students that match a heads-up submission approximately.
+    const activeStudents = students.filter(student => {
+      return !submissionStudentIds.includes(student._id.toString());
     });
     
     // Save pending grouping state.
