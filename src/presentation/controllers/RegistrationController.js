@@ -10,6 +10,8 @@ export class RegistrationController {
       AASTU: { groups: ["G65", "G66", "G67"] },
       AIT: { groups: ["G61", "G62", "G63", "G64"] }
     };
+    // Bind the method to maintain context.
+    this.startRegistration = this.startRegistration.bind(this);
   }
 
   // Optionally delete every text message sent by the user during registration.

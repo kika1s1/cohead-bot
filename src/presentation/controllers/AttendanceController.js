@@ -128,7 +128,14 @@ export class AttendanceController {
       await bot.answerCallbackQuery(query.id, { text: "Processing..." });
       // Delete the inline keyboard message.
       await bot.deleteMessage(chatId, pending.messageId).catch(() => {});
-
+      if (!pending.selected.size) {
+        await bot.answerCallbackQuery(query.id, {
+          text: "⚠ Warning: No students selected. Please try again.",
+          show_alert: true
+        });
+        delete this.pendingAttendance[chatId];
+        return;
+      }
       // Filter selected students.
       const selectedStudents = pending.students.filter(s => pending.selected.has(s._id.toString()));
       let overallResponse = "";
