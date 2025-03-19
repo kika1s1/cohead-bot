@@ -302,9 +302,24 @@ bot.onText(/\/attendee(?: .+)?/, async (msg) => {
   await attendeeController.startAttendee(msg);
 });
 
-// Registration command handler.
-bot.onText(/\/register(?: .+)?/, async (msg) => {
-  await registrationController.startRegistration(msg);
+// register 
+bot.onText(/\/start(?: .+)?/, async (msg) => {
+  // Attempt to delete the /start command message (may require proper bot rights)
+  try {
+    await bot.deleteMessage(msg.chat.id, msg.message_id);
+  } catch (err) {
+    console.error("Could not delete /start command message:", err);
+  }
+  // Send a welcome message with an inline keyboard
+  await bot.sendMessage(msg.chat.id, "Welcome! Please click the button below to register:", {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: "Register", callback_data: "register" }
+        ]
+      ]
+    }
+  });
 });
 
 // Other command handlers...
@@ -312,8 +327,12 @@ bot.onText(/\/attendance(?: .+)?/, async (msg) => {
   await attendanceController.startAttendance(msg);
 });
 
-// Callback query handler for inline keyboard actions in grouping, absentee, and attendee.
+// Callback query handler for inline keyboard actions in grouping, absentee, attendee, and registration.
 bot.on("callback_query", async (query) => {
+  // Registration inline button handler.
+
+
+  // Existing registration callback handling (for callback data starting with "reg_")
   if (query.data.startsWith("reg_")) {
     await registrationController.handleCallback(query);
     return;
@@ -325,24 +344,28 @@ bot.on("callback_query", async (query) => {
     return;
   }
 
-  // Attendee toggling
+  // Attendee toggling.
   if (query.data.startsWith("att_toggle:") || query.data === "att_confirm") {
     await attendeeController.handleCallback(query);
     return;
   }
 
-  // Absentee toggling
+  // Absentee toggling.
   if (query.data.startsWith("abs_toggle:") || query.data === "abs_confirm") {
     await absenteeController.handleCallback(query);
     return;
   }
 
-  // Grouping toggling
+  // Grouping toggling.
   if (query.data.startsWith("toggle:") || query.data === "confirm") {
     await groupingController.handleCallback(query);
     return;
   }
+  if (query.data === "register") {
+    // Acknowledge the button click.
+    await bot.answerCallbackQuery(query.id);
+    // Trigger the registration process.
+    await registrationController.startRegistration(query);
+    return;
+  }
 });
-
-
-
