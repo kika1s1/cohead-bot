@@ -32,7 +32,8 @@ export class MoonWalkController {
     const { pairs } = await this.moonWalk.execute(group, activeStudents);
 
     // Build pairing message.
-    let message = `<b>Moon Walk Session</b>\n`;
+    let message = `total students: ${activeStudents.length}\n`;
+    message += `<b>Moon Walk Session</b>\n`;
     message += `<b>Group:</b> ${group}\n\n`;
     message += `<b>Student Pairings:</b>\n`;
     pairs.forEach(pair => {
@@ -46,9 +47,9 @@ export class MoonWalkController {
         const maxLength = Math.max(name1.length, name2.length);
         const paddedName1 = name1.padEnd(maxLength, ' ');
         const paddedName2 = name2.padStart(maxLength, ' ');
-        message += `${paddedName1} 🧑‍💻 ${paddedName2}\n`;
+        message += `${paddedName1} 🧑‍💻 ${paddedName2} \n`;
       } else {
-        message += `${pair[0].name} (unpaired)\n`;
+        message += `🧑‍💻 ${pair[0].name}`;
       }
     });
     message += `\n<b>Team:</b>\n`;

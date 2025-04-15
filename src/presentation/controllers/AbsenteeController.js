@@ -185,16 +185,19 @@ export class AbsenteeController {
 
     // For each absent student, create a Heads Up submission record that marks them as not excused.
     for (const student of absentStudents) {
-      await HeadsUpSubmissionModel.create({
+      await HeadsUpSubmissionModel.findOneAndUpdate(
+      { _id: student._id },
+      {
         studentName: student.name,
         group: group.toUpperCase(),
         message: "did not write any headsup",
         isExcused: false,
-        telegram_id:student.telegram_id,
-        _id:student._id
-        
-      });
+        telegram_id: student.telegram_id
+      },
+      { upsert: true, new: true }
+      );
     }
+    
 
     // Build summary message.
     let summary = `<b>Absentees for ${group}</b>\n\n`;
